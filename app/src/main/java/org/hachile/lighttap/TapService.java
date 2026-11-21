@@ -1,0 +1,287 @@
+package org.hachile.lighttap;
+
+import android.accessibilityservice.AccessibilityService;
+import android.accessibilityservice.GestureDescription;
+import android.app.KeyguardManager;
+import android.content.*;
+import android.content.res.Configuration;
+import android.graphics.*;
+import android.os.*;
+import android.view.*;
+import android.view.accessibility.AccessibilityEvent;
+import android.widget.*;
+import java.lang.ref.WeakReference;
+
+public final class TapService extends AccessibilityService {
+    private static WeakReference<TapService> instance = new WeakReference<>(null);
+    static Runnable stateObserver, configObserver;
+    static TapService alive() { return instance.get(); }
+
+    private final Handler engineHandler = new Handler(Looper.getMainLooper());
+    private final Handler uiHandler = new Handler(Looper.getMainLooper());
+    private SequenceRunner runner;
+    private ClickPlan activePlan;
+    private WindowManager windows;
+    private Context themed;
+    private Store store;
+    private LinearLayout panel;
+    private TextView panelStatus;
+    private Button startButton, stopButton, pickButton;
+    private View picker, marker;
+    private WindowManager.LayoutParams panelParams;
+    private String status = "待命，尚未开始";
+    private boolean receiverRegistered;
+    private final BroadcastReceiver screenReceiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
+            if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
+                cancelPicker(); removeMarker(); if (isRunning()) runner.stop("屏幕已关闭，已停止");
+            }
+        }
+    };
+
+    @Override public void onServiceConnected() {
+        super.onServiceConnected();
+        windows = getSystemService(WindowManager.class); themed = new ContextThemeWrapper(this, R.style.AppTheme);
+        store = new Store(this);
+        runner = new SequenceRunner(new SequenceRunner.Scheduler() {
+            public void post(Runnable task, long delayMs) { engineHandler.postDelayed(task, delayMs); }
+            public void cancel(Runnable task) { engineHandler.removeCallbacks(task); }
+            public void clear() { engineHandler.removeCallbacksAndMessages(null); }
+        }, this::dispatchClick, (state, cycle, step, message) -> {
+            status = message;
+            if (activePlan != null && (state == SequenceRunner.State.COUNTDOWN || state == SequenceRunner.State.RUNNING))
+                status += "\n第 " + cycle + "/" + activePlan.loops + " 轮，第 " + step + "/" + activePlan.steps.size() + " 步";
+            updatePanel(); notifyState();
+        });
+        if (!receiverRegistered) {
+            IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
+            if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            else registerReceiver(screenReceiver, filter);
+            receiverRegistered = true;
+        }
+        instance = new WeakReference<>(this); notifyState();
+    }
+
+    boolean isRunning() { return runner != null && runner.isRunning(); }
+    String status() { return status; }
+    private void notifyState() { if (stateObserver != null) stateObserver.run(); }
+
+    void showPanel() {
+        if (alive() != this) { toast("辅助功能尚未连接，请返回应用重试"); return; }
+        if (!store.accepted()) { toast("请先在应用中阅读并同意用途说明"); return; }
+        if (panel != null) { panel.setVisibility(View.VISIBLE); return; }
+        panel = Ui.column(themed); int pad = Ui.dp(this, 10); panel.setPadding(pad, pad, pad, pad);
+        panel.setBackground(Ui.background(this, Color.WHITE, 16)); panel.setElevation(Ui.dp(this, 8));
+        TextView handle = new TextView(themed) {
+            @Override public boolean performClick() { super.performClick(); return true; }
+        };
+        handle.setText("轻点助手　移动面板"); handle.setTextColor(Ui.INK); handle.setTextSize(14);
+        handle.setGravity(Gravity.CENTER); handle.setMinHeight(Ui.dp(this, 48)); handle.setClickable(true);
+        handle.setContentDescription("移动控制面板，点击左右移位，也可拖动位置");
+        handle.setOnClickListener(v -> {
+            ScreenInfo screen = ScreenInfo.read(this);
+            panelParams.x = panelParams.x < screen.width / 2 ? screen.width - panel.getWidth() - Ui.dp(this, 12) : Ui.dp(this, 12);
+            repositionPanel();
+        }); panel.addView(handle);
+        panelStatus = Ui.text(themed, status, 13, Ui.MUTED); panelStatus.setMinHeight(Ui.dp(this, 48)); panel.addView(panelStatus);
+        LinearLayout row = new LinearLayout(themed);
+        startButton = Ui.button(themed, "开始", true, v -> startRun());
+        stopButton = Ui.button(themed, "停止", false, v -> {
+            cancelPicker(); removeMarker(); runner.stop("已手动停止");
+        });
+        stopButton.setTextColor(Color.rgb(180, 35, 35));
+        row.addView(startButton, new LinearLayout.LayoutParams(0, -2, 1));
+        row.addView(stopButton, new LinearLayout.LayoutParams(0, -2, 1)); panel.addView(row);
+        LinearLayout bottom = new LinearLayout(themed);
+        pickButton = Ui.button(themed, "取点", false, v -> choosePoint());
+        bottom.addView(pickButton, new LinearLayout.LayoutParams(0, -2, 1));
+        bottom.addView(Ui.button(themed, "关闭", false, v -> closePanel()), new LinearLayout.LayoutParams(0, -2, 1));
+        panel.addView(bottom);
+        panelParams = layout(Ui.dp(this, 220), -2, false);
+        panelParams.x = Ui.dp(this, 12); panelParams.y = Ui.dp(this, 100);
+        handle.setOnTouchListener(new View.OnTouchListener() {
+            float downX, downY; int originalX, originalY; boolean moved;
+            public boolean onTouch(View view, MotionEvent event) {
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        downX = event.getRawX(); downY = event.getRawY(); originalX = panelParams.x; originalY = panelParams.y; moved = false; return true;
+                    case MotionEvent.ACTION_MOVE:
+                        float dx = event.getRawX() - downX, dy = event.getRawY() - downY;
+                        if (Math.hypot(dx, dy) > ViewConfiguration.get(TapService.this).getScaledTouchSlop()) moved = true;
+                        if (moved) {
+                            panelParams.x = originalX + Math.round(dx); panelParams.y = originalY + Math.round(dy); repositionPanel();
+                        }
+                        return true;
+                    case MotionEvent.ACTION_UP:
+                        if (!moved) view.performClick(); return true;
+                    case MotionEvent.ACTION_CANCEL: return true;
+                    default: return false;
+                }
+            }
+        });
+        try { windows.addView(panel, panelParams); updatePanel(); }
+        catch (RuntimeException e) { panel = null; toast("无法显示控制面板，请检查辅助功能状态"); }
+    }
+
+    @android.annotation.SuppressLint("RtlHardcoded") // Pixel coordinates use the physical left edge in every locale.
+    private WindowManager.LayoutParams layout(int width, int height, boolean untouchable) {
+        int flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
+        if (untouchable) flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+        WindowManager.LayoutParams p = new WindowManager.LayoutParams(width, height,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, flags, PixelFormat.TRANSLUCENT);
+        p.gravity = Gravity.TOP | Gravity.LEFT;
+        if (Build.VERSION.SDK_INT >= 30) p.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+        else if (Build.VERSION.SDK_INT >= 28) p.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        return p;
+    }
+    private void repositionPanel() {
+        if (panel == null) return;
+        ScreenInfo screen = ScreenInfo.read(this);
+        panelParams.x = Math.max(0, Math.min(panelParams.x, screen.width - panel.getWidth()));
+        panelParams.y = Math.max(Ui.dp(this, 28), Math.min(panelParams.y, screen.height - panel.getHeight() - Ui.dp(this, 28)));
+        try { windows.updateViewLayout(panel, panelParams); }
+        catch (RuntimeException e) { closePanel(); toast("控制面板已断开，请重新打开"); }
+    }
+    private void updatePanel() {
+        if (panel == null) return;
+        panelStatus.setText(status); startButton.setEnabled(!isRunning() && picker == null);
+        pickButton.setEnabled(!isRunning() && picker == null); stopButton.setEnabled(isRunning() || picker != null);
+    }
+    private boolean unlocked() {
+        return getSystemService(PowerManager.class).isInteractive() && !getSystemService(KeyguardManager.class).isKeyguardLocked();
+    }
+    private boolean environmentMatches() {
+        ScreenInfo s = ScreenInfo.read(this);
+        return activePlan != null && activePlan.matches(s.width, s.height, s.rotation) && unlocked();
+    }
+
+    private void startRun() {
+        if (isRunning()) return;
+        removeMarker();
+        try {
+            if (!store.accepted() || !store.runNoticeSeen()) throw new IllegalStateException("请先在应用中阅读并确认用途和运行说明");
+            activePlan = store.load(ScreenInfo.read(this)).plan();
+            if (!environmentMatches()) throw new IllegalArgumentException("屏幕尺寸、方向变化或屏幕已锁定，请重新检查坐标");
+            Rect bounds = new Rect(); int[] location = new int[2]; panel.getLocationOnScreen(location);
+            bounds.set(location[0], location[1], location[0] + panel.getWidth(), location[1] + panel.getHeight());
+            if (bounds.isEmpty()) throw new IllegalStateException("面板正在显示，请稍后再试");
+            for (ClickStep step : activePlan.steps) {
+                if (bounds.contains(step.x, step.y)) throw new IllegalArgumentException("控制面板遮挡了点击坐标，请拖动移开后再开始");
+            }
+            runner.start(activePlan);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            status = e.getMessage(); updatePanel(); notifyState(); toast(status);
+        }
+    }
+    private boolean dispatchClick(ClickStep step, SequenceRunner.Result result) {
+        if (!environmentMatches() || panel == null || panel.getVisibility() != View.VISIBLE) {
+            runner.stop("屏幕或控制面板状态变化，已停止"); return false;
+        }
+        int[] location = new int[2]; panel.getLocationOnScreen(location);
+        if (step.x >= location[0] && step.x < location[0] + panel.getWidth()
+            && step.y >= location[1] && step.y < location[1] + panel.getHeight()) {
+            runner.stop("控制面板遮挡点击坐标，已停止"); return false;
+        }
+        Path path = new Path(); path.moveTo(step.x, step.y);
+        GestureDescription description = new GestureDescription.Builder()
+            .addStroke(new GestureDescription.StrokeDescription(path, 0, step.durationMs)).build();
+        return dispatchGesture(description, new GestureResultCallback() {
+            @Override public void onCompleted(GestureDescription gesture) { result.complete(true); }
+            @Override public void onCancelled(GestureDescription gesture) { result.complete(false); }
+        }, engineHandler);
+    }
+
+    private void choosePoint() {
+        if (isRunning() || picker != null) return;
+        if (!unlocked()) { toast("请先解锁屏幕"); return; }
+        final ScreenInfo screen = ScreenInfo.read(this);
+        try {
+            Store.Draft d = store.load(screen);
+            if (!screen.matches(d) && !d.steps.isEmpty()) throw new IllegalStateException("屏幕已变化，请返回应用清空旧步骤后重新取点");
+        } catch (IllegalStateException e) { toast(e.getMessage()); return; }
+        removeMarker();
+        FrameLayout layer = new FrameLayout(themed); layer.setBackgroundColor(0x180F172A);
+        View target = new View(themed) {
+            @Override public boolean performClick() { super.performClick(); return true; }
+        };
+        target.setContentDescription("点选屏幕上的坐标，选点不会点击下方应用");
+        layer.addView(target, new FrameLayout.LayoutParams(-1, -1));
+        TextView hint = Ui.text(themed, "点选位置，记录坐标\n不会点击下方页面", 17, Ui.INK);
+        hint.setPadding(Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 14));
+        hint.setBackground(Ui.background(this, Color.WHITE, 12));
+        FrameLayout.LayoutParams hintParams = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        hintParams.topMargin = Ui.dp(this, 48); layer.addView(hint, hintParams);
+        Button cancel = Ui.button(themed, "取消取点", false, v -> cancelPicker());
+        FrameLayout.LayoutParams cancelParams = new FrameLayout.LayoutParams(Ui.dp(this, 180), -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        cancelParams.bottomMargin = Ui.dp(this, 52); layer.addView(cancel, cancelParams);
+        target.setOnTouchListener((view, event) -> {
+            if (event.getPointerCount() > 1) { cancelPicker(); toast("请一次选择一个位置"); return true; }
+            if (event.getActionMasked() == MotionEvent.ACTION_UP) {
+                view.performClick(); int x = Math.round(event.getRawX()), y = Math.round(event.getRawY());
+                cancelPicker(); savePoint(screen, x, y);
+            } else if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) cancelPicker();
+            return true;
+        });
+        target.setClickable(true); picker = layer; panel.setVisibility(View.GONE);
+        try { windows.addView(picker, layout(-1, -1, false)); updatePanel(); }
+        catch (RuntimeException e) { cancelPicker(); toast("无法显示取点层，请检查辅助功能状态"); }
+    }
+    private void savePoint(ScreenInfo screen, int x, int y) {
+        try {
+            ScreenInfo now = ScreenInfo.read(this);
+            if (screen.width != now.width || screen.height != now.height || screen.rotation != now.rotation || !unlocked())
+                throw new IllegalStateException("屏幕已变化，本次取点已取消");
+            Store.Draft d = store.load(now);
+            if (!now.matches(d)) {
+                if (!d.steps.isEmpty()) throw new IllegalStateException("坐标基准已变化，请重新取点");
+                d.width = now.width; d.height = now.height; d.rotation = now.rotation;
+            }
+            d.steps.add(new ClickStep(x, y, 50, 500)); store.save(d);
+            status = "已添加第 " + d.steps.size() + " 步 (" + x + ", " + y + ")";
+            showMarker(x, y, d.steps.size()); updatePanel(); notifyState();
+            if (configObserver != null) configObserver.run();
+        } catch (IllegalArgumentException | IllegalStateException e) { toast(e.getMessage()); }
+    }
+    private void showMarker(int x, int y, int number) {
+        removeMarker();
+        TextView label = Ui.heading(themed, String.valueOf(number), 18); label.setTextColor(Color.WHITE);
+        label.setGravity(Gravity.CENTER); label.setBackground(Ui.background(this, Ui.BLUE, 24)); marker = label;
+        int size = Ui.dp(this, 40); WindowManager.LayoutParams params = layout(size, size, true);
+        params.x = x - size / 2; params.y = y - size / 2;
+        try { windows.addView(marker, params); uiHandler.postDelayed(this::removeMarker, 1200); }
+        catch (RuntimeException e) { marker = null; }
+    }
+    private void removeMarker() {
+        uiHandler.removeCallbacksAndMessages(null); if (marker != null) { remove(marker); marker = null; }
+    }
+    private void cancelPicker() {
+        if (picker != null) { remove(picker); picker = null; }
+        if (panel != null) panel.setVisibility(View.VISIBLE); updatePanel();
+    }
+    private void closePanel() {
+        cancelPicker(); removeMarker(); if (runner != null) runner.stop("面板已关闭，已停止");
+        if (panel != null) { remove(panel); panel = null; }
+    }
+    private void remove(View view) {
+        try { windows.removeView(view); }
+        catch (IllegalArgumentException ignored) { /* Already removed by the system. */ }
+    }
+    @Override public void onAccessibilityEvent(AccessibilityEvent event) {
+        if (isRunning() && !environmentMatches()) runner.stop("屏幕状态变化，已停止");
+    }
+    @Override public void onConfigurationChanged(Configuration config) {
+        super.onConfigurationChanged(config); cancelPicker(); removeMarker();
+        if (isRunning() && !environmentMatches()) runner.stop("屏幕尺寸或方向变化，已停止");
+        repositionPanel();
+    }
+    @Override public void onInterrupt() { cancelPicker(); removeMarker(); if (runner != null) runner.stop("辅助功能被中断，已停止"); }
+    private void shutdown() {
+        closePanel(); engineHandler.removeCallbacksAndMessages(null);
+        if (receiverRegistered) { unregisterReceiver(screenReceiver); receiverRegistered = false; }
+        if (alive() == this) instance.clear();
+        notifyState();
+    }
+    @Override public boolean onUnbind(Intent intent) { shutdown(); return super.onUnbind(intent); }
+    @Override public void onDestroy() { shutdown(); super.onDestroy(); }
+    private void toast(String message) { Toast.makeText(themed == null ? this : themed, message, Toast.LENGTH_LONG).show(); }
+}

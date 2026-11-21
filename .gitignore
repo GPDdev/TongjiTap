@@ -8,3 +8,4 @@ local.properties
 *.iml
 *.log
 captures/
+__pycache__/

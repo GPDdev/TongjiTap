@@ -72,6 +72,16 @@ public class SequenceRunnerTest {
         runner.start(plan(1)); countdown(); callbacks.get(0).complete(true); runner.stop("停止");
         assertTrue(clock.tasks.isEmpty()); assertEquals(1, clicks.size());
     }
+    @Test public void synchronousCompletionDoesNotLeaveTimeoutOrDuplicateWork() {
+        SequenceRunner immediate = new SequenceRunner(clock, (step, result) -> { result.complete(true); return true; }, (s,c,i,m) -> {});
+        immediate.start(new ClickPlan(1, 1080, 2400, 0, List.of(new ClickStep(1, 2, 50, 0))));
+        countdown(); assertEquals(SequenceRunner.State.FINISHED, immediate.state()); assertTrue(clock.tasks.isEmpty());
+    }
+    @Test public void driverExceptionStopsAndClearsWatchdog() {
+        SequenceRunner broken = new SequenceRunner(clock, (step, result) -> { throw new SecurityException(); }, (s,c,i,m) -> {});
+        broken.start(plan(1)); countdown();
+        assertEquals(SequenceRunner.State.ERROR, broken.state()); assertTrue(clock.tasks.isEmpty());
+    }
     @Test public void takesImmutableSnapshot() {
         ArrayList<ClickStep> steps = new ArrayList<>(plan(1).steps);
         ClickPlan p = new ClickPlan(1, 1080, 2400, 0, steps); steps.clear();
