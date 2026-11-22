@@ -20,18 +20,18 @@ def smoke(pair):
         p = subprocess.run([str(ADB), '-s', serial, *args], capture_output=True, check=True, timeout=45)
         return p.stdout if binary else p.stdout.decode('utf-8', errors='replace')
 
-    if adb('emu', 'avd', 'name').splitlines()[0].strip() != f'LightTap{api}':
+    if adb('emu', 'avd', 'name').splitlines()[0].strip() != f'TongjiTap{api}':
         raise RuntimeError('Refusing to modify a non-project AVD')
-    if not (ROOT / f'tools/avds/LightTap{api}.avd').exists():
+    if not (ROOT / f'tools/avds/TongjiTap{api}.avd').exists():
         raise RuntimeError('Project AVD definition missing')
-    subprocess.run([str(ADB), '-s', serial, 'uninstall', 'org.hachile.lighttap'], capture_output=True)
-    assert 'Success' in adb('install', str(ROOT / 'dist/lighttap-0.1.0.apk'))
-    adb('shell', 'am', 'start', '-W', '-n', 'org.hachile.lighttap/.MainActivity')
+    subprocess.run([str(ADB), '-s', serial, 'uninstall', 'org.hachile.tongjitap'], capture_output=True)
+    assert 'Success' in adb('install', str(ROOT / 'dist/tongjitap-0.2.0.apk'))
+    adb('shell', 'am', 'start', '-W', '-n', 'org.hachile.tongjitap/.MainActivity')
     time.sleep(.5)
 
     def tree():
-        adb('shell', 'uiautomator', 'dump', '/sdcard/lighttap-release.xml')
-        return ET.fromstring(adb('shell', 'cat', '/sdcard/lighttap-release.xml'))
+        adb('shell', 'uiautomator', 'dump', '/sdcard/tongjitap-release.xml')
+        return ET.fromstring(adb('shell', 'cat', '/sdcard/tongjitap-release.xml'))
 
     def find(root, text):
         return next((n for n in root.iter('node') if n.get('text') == text), None)
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     with ThreadPoolExecutor(max_workers=2) as pool:
         list(pool.map(smoke, [(26, 5556), (36, 5558)]))
     p = subprocess.run([str(ROOT / 'tools/android-sdk/build-tools/35.0.0/aapt.exe'), 'dump', 'permissions',
-                        str(ROOT / 'dist/lighttap-0.1.0.apk')], capture_output=True, check=True, text=True)
+                        str(ROOT / 'dist/tongjitap-0.2.0.apk')], capture_output=True, check=True, text=True)
     assert 'uses-permission:' not in p.stdout
     (ROOT / 'dist/checks/release-permissions.txt').write_text(p.stdout, encoding='utf-8')
     print('Release requested permissions: none', flush=True)

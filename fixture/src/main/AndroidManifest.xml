@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:label="轻点测试页面" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:allowBackup="false">
+    <application android:label="循济测试页面" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:allowBackup="false" android:enableOnBackInvokedCallback="true" android:icon="@android:drawable/ic_menu_view">
         <activity android:name=".TestActivity" android:exported="true" android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

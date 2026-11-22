@@ -1,4 +1,4 @@
-package org.hachile.lighttap;
+package org.hachile.tongjitap;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -75,8 +75,13 @@ public final class MainActivity extends Activity {
                 getWindow().getDecorView().setSystemUiVisibility(flags);
             }
         });
-        page.addView(Ui.text(this, "LIGHT TAP / 0.1.0", 12, Ui.BLUE)); Ui.gap(page, 8);
-        page.addView(Ui.heading(this, "轻点助手", 32)); Ui.gap(page, 6);
+        LinearLayout brand = new LinearLayout(this); brand.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        ImageView icon = new ImageView(this); icon.setImageResource(R.drawable.ic_launcher); icon.setContentDescription("循济图标");
+        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(Ui.dp(this, 56), Ui.dp(this, 56));
+        iconParams.rightMargin = Ui.dp(this, 14); brand.addView(icon, iconParams);
+        LinearLayout brandText = Ui.column(this);
+        brandText.addView(Ui.heading(this, "循济", 30));
+        brandText.addView(Ui.text(this, "TongjiTap  /  0.2.0", 13, Ui.BLUE)); brand.addView(brandText); page.addView(brand); Ui.gap(page, 14);
         page.addView(Ui.text(this, "把重复点击交给一组清晰的步骤", 16, Ui.MUTED)); Ui.gap(page, 22);
 
         LinearLayout control = Ui.card(this);
@@ -111,6 +116,7 @@ public final class MainActivity extends Activity {
             for (int i = 0; i < draft.steps.size(); i++) addStepCard(i);
             editor.addView(Ui.button(this, "＋ 手动添加步骤", true, v -> editStep(-1)));
             editor.addView(Ui.button(this, "清空步骤并重新取点", false, v -> reset())); Ui.gap(editor, 14);
+            addColorCard();
         }
         LinearLayout help = Ui.card(this);
         help.addView(Ui.heading(this, "开始之前", 18)); Ui.gap(help, 8);
@@ -136,15 +142,15 @@ public final class MainActivity extends Activity {
                     change(() -> draft.steps.remove(index));
                 }).show();
         });
-        actions.addView(edit, new LinearLayout.LayoutParams(0, -2, 1));
-        actions.addView(delete, new LinearLayout.LayoutParams(0, -2, 1)); card.addView(actions);
+        actions.addView(edit, Ui.actionParams(this));
+        actions.addView(delete, Ui.actionParams(this)); card.addView(actions);
         LinearLayout order = new LinearLayout(this);
         Button up = Ui.button(this, "上移", false, v -> move(index, -1)); up.setEnabled(index > 0);
         Button down = Ui.button(this, "下移", false, v -> move(index, 1)); down.setEnabled(index + 1 < draft.steps.size());
         if (index == 0) unavailableMoves.add(up);
         if (index + 1 == draft.steps.size()) unavailableMoves.add(down);
-        order.addView(up, new LinearLayout.LayoutParams(0, -2, 1));
-        order.addView(down, new LinearLayout.LayoutParams(0, -2, 1)); card.addView(order); editor.addView(card);
+        order.addView(up, Ui.actionParams(this));
+        order.addView(down, Ui.actionParams(this)); card.addView(order); editor.addView(card);
     }
 
     private void refreshStatus() {
@@ -154,6 +160,70 @@ public final class MainActivity extends Activity {
         status.setText(service == null ? "尚未开始" : service.status());
         Ui.enabled(editor, !busy());
         for (Button button : unavailableMoves) button.setEnabled(false);
+    }
+
+    private void addColorCard() {
+        LinearLayout card = Ui.card(this); card.addView(Ui.heading(this, "颜色触发", 22)); Ui.gap(card, 8);
+        ColorRule rule = draft.colorRule;
+        String summary = rule == null || !rule.enabled ? "未开启" : "已开启：(" + rule.x + ", " + rule.y + ") 变为 "
+            + rule.hex() + " 时，" + (rule.back ? "执行系统返回" : "点击 (" + rule.tapX + ", " + rule.tapY + ")");
+        card.addView(Ui.text(this, summary, 15, Ui.INK)); Ui.gap(card, 6);
+        card.addView(Ui.text(this, android.os.Build.VERSION.SDK_INT < 30 ? "需要 Android 11 及以上。当前系统可使用普通点击步骤。"
+            : "连续检测到目标颜色后，暂停步骤并执行一次动作；画面恢复后继续。", 14, Ui.MUTED));
+        Button configure = Ui.button(this, "设置颜色规则", false, v -> editColorRule());
+        if (android.os.Build.VERSION.SDK_INT < 30) unavailableMoves.add(configure);
+        card.addView(configure); editor.addView(card);
+    }
+
+    private EditText textField(LinearLayout parent, String label, String value) {
+        parent.addView(Ui.text(this, label, 14, Ui.MUTED));
+        EditText field = new EditText(this); field.setSingleLine(true); field.setText(value); field.setSelectAllOnFocus(true);
+        field.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
+        field.setContentDescription(label); parent.addView(field); Ui.gap(parent, 10); return field;
+    }
+
+    private void editColorRule() {
+        if (!editable() || android.os.Build.VERSION.SDK_INT < 30) return;
+        if (!ScreenInfo.read(this).matches(draft)) { toast("屏幕已变化，请清空并重新设置坐标"); return; }
+        ColorRule old = draft.colorRule;
+        LinearLayout form = form();
+        CheckBox enabled = new CheckBox(this); enabled.setText("启用颜色规则"); enabled.setChecked(old != null && old.enabled);
+        enabled.setMinHeight(Ui.dp(this, 48)); form.addView(enabled);
+        form.addView(Ui.text(this, "开启后会在本机读取屏幕截图中的指定像素，图片随即释放，不保存、不上传。请选页面稳定区域，避开状态栏和面板。", 14, Ui.MUTED)); Ui.gap(form, 12);
+        LinearLayout fields = Ui.column(this); form.addView(fields);
+        EditText x = number(fields, "检测点 X", String.valueOf(old == null ? draft.width / 2 : old.x));
+        EditText y = number(fields, "检测点 Y", String.valueOf(old == null ? draft.height / 2 : old.y));
+        EditText rgb = textField(fields, "目标颜色（#RRGGBB）", old == null ? "#FFFFFF" : old.hex());
+        EditText tolerance = number(fields, "颜色容差（0～64）", String.valueOf(old == null ? 16 : old.tolerance));
+        EditText confirmations = number(fields, "连续命中次数（2～10）", String.valueOf(old == null ? 2 : old.confirmations));
+        EditText interval = number(fields, "检测间隔（500～10000 毫秒）", String.valueOf(old == null ? 500 : old.intervalMs));
+        fields.addView(Ui.heading(this, "命中后执行", 17));
+        RadioGroup action = new RadioGroup(this);
+        RadioButton back = new RadioButton(this); back.setId(View.generateViewId()); back.setText("手机返回键"); action.addView(back);
+        RadioButton tap = new RadioButton(this); tap.setId(View.generateViewId()); tap.setText("点击指定坐标"); action.addView(tap);
+        action.check(old == null || old.back ? back.getId() : tap.getId()); fields.addView(action);
+        LinearLayout tapFields = Ui.column(this); fields.addView(tapFields);
+        EditText tapX = number(tapFields, "动作点击点 X", String.valueOf(old == null ? 0 : old.tapX));
+        EditText tapY = number(tapFields, "动作点击点 Y", String.valueOf(old == null ? 0 : old.tapY));
+        Runnable update = () -> { Ui.enabled(fields, enabled.isChecked()); tapFields.setVisibility(back.isChecked() ? View.GONE : View.VISIBLE); };
+        enabled.setOnCheckedChangeListener((b, checked) -> update.run()); action.setOnCheckedChangeListener((g, id) -> update.run()); update.run();
+        form.addView(Ui.text(this, "动作后等待 1 秒，再确认颜色已变化。持续约 12 秒未恢复会停止，不会反复按返回。也可通过悬浮面板的“检测点”和“动作点”选取坐标。", 13, Ui.MUTED));
+        ScrollView scroll = new ScrollView(this); scroll.addView(form);
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("颜色触发规则").setView(scroll)
+            .setNegativeButton("取消", null).setPositiveButton("保存", null).create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            if (!editable()) return;
+            try {
+                Store.Draft updated = store.load(ScreenInfo.read(this));
+                if (!ScreenInfo.read(this).matches(updated)) throw new IllegalArgumentException("屏幕已变化，请重新取点");
+                if (!enabled.isChecked()) updated.colorRule = old == null ? null : new ColorRule(false, old.x, old.y, old.rgb,
+                    old.tolerance, old.confirmations, old.intervalMs, old.back, old.tapX, old.tapY);
+                else updated.colorRule = new ColorRule(true, parse(x, "检测点 X"), parse(y, "检测点 Y"), ColorRule.parseRgb(rgb.getText().toString()),
+                    parse(tolerance, "颜色容差"), parse(confirmations, "连续命中次数"), parse(interval, "检测间隔"), back.isChecked(),
+                    back.isChecked() ? 0 : parse(tapX, "动作点击点 X"), back.isChecked() ? 0 : parse(tapY, "动作点击点 Y"));
+                store.save(updated); dialog.dismiss(); render();
+            } catch (IllegalArgumentException | IllegalStateException e) { toast(e.getMessage()); }
+        })); dialog.show();
     }
 
     private void move(int index, int delta) {
@@ -222,7 +292,7 @@ public final class MainActivity extends Activity {
     private void reset() {
         if (!editable()) return;
         new AlertDialog.Builder(this).setTitle("清空步骤并重设坐标基准？")
-            .setMessage("删除已保存的步骤，使用当前屏幕尺寸和方向重新取点。这个操作无法撤销。")
+            .setMessage("删除已保存的步骤和颜色规则，使用当前屏幕尺寸和方向重新取点。这个操作无法撤销。")
             .setNegativeButton("取消", null).setPositiveButton("清空并重设", (d, w) -> {
                 if (!editable()) return;
                 try {
@@ -247,7 +317,7 @@ public final class MainActivity extends Activity {
     }
     private void permissions() {
         new AlertDialog.Builder(this).setTitle("开启前请了解权限")
-            .setMessage("辅助功能允许轻点助手在其他应用上模拟点击。应用不读取页面或聊天内容，不联网。\n\n进入系统设置后，找到“轻点助手”并自行开启。部分系统会限制侧载应用的辅助功能，请仅在确认安装来源可信时，按系统提供的选项操作。\n\n可随时在同一设置中关闭服务。")
+            .setMessage("辅助功能允许循济在其他应用上模拟点击和执行返回。开启颜色规则时会读取屏幕截图，只在内存中采样指定像素，不保存、不上传。应用不联网。\n\n进入系统设置后，找到“循济”并自行开启。部分系统会限制侧载应用的辅助功能，请仅在确认安装来源可信时，按系统提供的选项操作。\n\n可随时在同一设置中关闭服务。")
             .setNegativeButton("取消", null).setPositiveButton("前往系统设置", (d, w) -> {
                 try { startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); }
                 catch (android.content.ActivityNotFoundException e) { toast("无法打开设置，请手动进入系统辅助功能"); }
@@ -265,7 +335,7 @@ public final class MainActivity extends Activity {
     private void showConsent() {
         if (consentShowing || isFinishing()) return; consentShowing = true;
         View content = noticeView(true);
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("使用轻点助手前")
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("使用循济前")
             .setView(content).setCancelable(false).setNegativeButton("退出", (d, w) -> finish())
             .setPositiveButton("同意并进入", null).create();
         dialog.setOnDismissListener(d -> consentShowing = false);

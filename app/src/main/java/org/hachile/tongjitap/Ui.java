@@ -1,9 +1,11 @@
-package org.hachile.lighttap;
+package org.hachile.tongjitap;
 
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
+import android.content.res.ColorStateList;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -34,9 +36,22 @@ final class Ui {
     }
     static Button button(Context c, String text, boolean primary, View.OnClickListener click) {
         Button b = new Button(c); b.setText(text); b.setAllCaps(false); b.setTextSize(15);
-        b.setMinHeight(dp(c, 48)); b.setMinimumHeight(dp(c, 48)); b.setTextColor(primary ? Color.WHITE : BLUE);
-        b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(primary ? BLUE : Color.rgb(232, 239, 255)));
+        b.setMinHeight(dp(c, 48)); b.setMinimumHeight(dp(c, 48)); b.setMinWidth(0); b.setMinimumWidth(0);
+        int[][] states = {{-android.R.attr.state_enabled}, {}};
+        b.setTextColor(new ColorStateList(states, new int[]{Color.rgb(111, 120, 134), primary ? Color.WHITE : BLUE}));
+        GradientDrawable shape = background(c, BLUE, 12);
+        shape.setColor(new ColorStateList(states, new int[]{Color.rgb(229, 232, 237), primary ? BLUE : Color.rgb(232, 239, 255)}));
+        b.setBackgroundTintList(null);
+        b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x332563EB), shape, null));
+        b.setStateListAnimator(null); b.setElevation(0);
+        b.setPadding(dp(c, 12), dp(c, 8), dp(c, 12), dp(c, 8));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.topMargin = dp(c, 8); b.setLayoutParams(lp);
         b.setOnClickListener(click); return b;
+    }
+    static LinearLayout.LayoutParams actionParams(Context c) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
+        lp.setMargins(dp(c, 3), dp(c, 8), dp(c, 3), 0); return lp;
     }
     static void gap(LinearLayout parent, int height) {
         View spacer = new View(parent.getContext()); parent.addView(spacer, new LinearLayout.LayoutParams(1, dp(parent.getContext(), height)));
@@ -47,6 +62,5 @@ final class Ui {
             ViewGroup group = (ViewGroup) view;
             for (int i = 0; i < group.getChildCount(); i++) enabled(group.getChildAt(i), enabled);
         }
-        if (view instanceof Button) view.setAlpha(enabled ? 1f : 0.55f);
     }
 }

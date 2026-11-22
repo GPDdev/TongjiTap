@@ -1,4 +1,4 @@
-package org.hachile.lighttap;
+package org.hachile.tongjitap;
 
 import android.app.*;
 import android.accessibilityservice.AccessibilityServiceInfo;
@@ -44,11 +44,11 @@ public final class DeviceChecks extends Instrumentation {
             ScreenInfo screen = ScreenInfo.read(target); Store.Draft d = new Store.Draft(screen);
             d.steps.add(new ClickStep(12, 34, 50, 500)); d.loops = 7; store.save(d);
             Store.Draft loaded = store.load(screen); require(loaded.loops == 7 && loaded.steps.get(0).y == 34, "Config round trip");
-            target.getSharedPreferences("lighttap", 0).edit().putString("draft", "{broken").commit();
+            target.getSharedPreferences("tongjitap", 0).edit().putString("draft", "{broken").commit();
             boolean rejected = false;
             try { store.load(screen); } catch (IllegalStateException expected) { rejected = true; }
             require(rejected, "Corrupt JSON must be rejected");
-            require("{broken".equals(target.getSharedPreferences("lighttap", 0).getString("draft", "")), "Corrupt data must not be overwritten silently");
+            require("{broken".equals(target.getSharedPreferences("tongjitap", 0).getString("draft", "")), "Corrupt data must not be overwritten silently");
             store.save(new Store.Draft(screen)); pass();
 
             stage = "Manual editor validation and persistence";
@@ -63,9 +63,16 @@ public final class DeviceChecks extends Instrumentation {
             setText("整组循环次数（1～100000）", "2"); click("保存");
             require(store.load(screen).loops == 2, "Loops must persist"); screenshot("02-editor"); pass();
 
+            stage = "Disabled reorder controls and formal identity";
+            scrollTo("上移"); require(!requiredNode("上移").node.isEnabled(), "First step cannot move up");
+            require(!requiredNode("下移").node.isEnabled(), "Last step cannot move down");
+            require("org.hachile.tongjitap".equals(target.getPackageName()), "Formal package ID");
+            require("循济".equals(target.getApplicationInfo().loadLabel(target.getPackageManager()).toString()), "Formal application label");
+            screenshot("06-disabled-buttons"); pass();
+
             stage = "Service connection and screen picking";
             store.save(new Store.Draft(screen)); launchMain();
-            shell("settings put secure enabled_accessibility_services org.hachile.lighttap/.TapService");
+            shell("settings put secure enabled_accessibility_services org.hachile.tongjitap/.TapService");
             shell("settings put secure accessibility_enabled 1"); await(() -> TapService.alive() != null, 8000);
             click("打开悬浮控制面板"); click("了解并打开面板");
             fixture(true); Rect a = requiredNode("目标 A").bounds, b = requiredNode("目标 B").bounds;
@@ -98,7 +105,7 @@ public final class DeviceChecks extends Instrumentation {
             require(downs.equals(Arrays.asList("A", "B", "A", "B")), "Whole sequence order: " + downs);
             require(shortClicks == 2 && longClicks == 2, "Expected two short clicks and two long presses: " + records);
             require(TapService.alive().status().contains("已完成"), "Successful completion state");
-            saveText("actual-events.jsonl", shell("run-as org.hachile.lighttap.fixture cat files/events.jsonl")); pass();
+            saveText("actual-events.jsonl", shell("run-as org.hachile.tongjitap.fixture cat files/events.jsonl")); pass();
 
             stage = "Stop countdown, no delayed clicks";
             fixture(true); click("开始"); SystemClock.sleep(400); click("停止"); SystemClock.sleep(3300);
@@ -114,11 +121,11 @@ public final class DeviceChecks extends Instrumentation {
             require(events().size() == count && !TapService.alive().isRunning(), "No next step after stopping"); pass();
 
             stage = "Panel overlap protection";
-            Rect handle = requiredNode("轻点助手　移动面板").bounds;
+            Rect handle = requiredNode("循济　移动面板").bounds;
             swipe(handle.centerX(), handle.centerY(), a.centerX(), a.centerY()); click("开始");
             require(!TapService.alive().isRunning(), "Panel overlap must prevent running");
             require(TapService.alive().status().contains("遮挡"), "Panel overlap error message");
-            Rect shifted = requiredNode("轻点助手　移动面板").bounds;
+            Rect shifted = requiredNode("循济　移动面板").bounds;
             swipe(shifted.centerX(), shifted.centerY(), handle.centerX(), handle.centerY()); pass();
 
             stage = "Orientation stop and stale-coordinate rejection";
@@ -136,10 +143,12 @@ public final class DeviceChecks extends Instrumentation {
             fixture(true); click("开始"); shell("settings put secure enabled_accessibility_services ''");
             await(() -> TapService.alive() == null, 5000); SystemClock.sleep(3300);
             require(events().isEmpty(), "No gesture after permission revoked during countdown");
-            shell("settings put secure enabled_accessibility_services org.hachile.lighttap/.TapService");
+            shell("settings put secure enabled_accessibility_services org.hachile.tongjitap/.TapService");
             await(() -> TapService.alive() != null, 6000);
             require(!TapService.alive().isRunning(), "Reconnected service must stay idle");
             launchMain(); screenshot("05-after-checks"); pass();
+
+            runColorChecks(screen, a, b);
 
             result.putString("stream", "\nPASS: " + passed + " device scenarios on API " + Build.VERSION.SDK_INT + "\n");
             result.putInt("passed", passed); finish(Activity.RESULT_OK, result);
@@ -153,6 +162,73 @@ public final class DeviceChecks extends Instrumentation {
     private void pass() {
         passed++; Bundle b = new Bundle(); b.putString("stream", "PASS " + passed + ": " + stage + "\n"); sendStatus(0, b);
     }
+    private void runColorChecks(ScreenInfo screen, Rect a, Rect b) throws Exception {
+        if (Build.VERSION.SDK_INT < 30) {
+            stage = "Color feature is visibly unavailable below Android 11";
+            scrollTo("设置颜色规则"); require(!requiredNode("设置颜色规则").node.isEnabled(), "Unsupported feature must be disabled");
+            screenshot("07-color-unavailable"); pass(); return;
+        }
+        stage = "Color point picking does not insert normal steps";
+        store.save(new Store.Draft(screen)); launchMain(); click("打开悬浮控制面板"); fixture(true);
+        click("检测点"); tap(screen.width - 40, screen.height / 2);
+        Store.Draft picked = store.load(screen);
+        require(picked.steps.isEmpty() && picked.colorRule.x == screen.width - 40 && !picked.colorRule.enabled, "Detector point saved without enabling or extra steps");
+        click("动作点"); tap(b.centerX(), b.centerY()); picked = store.load(screen);
+        require(!picked.colorRule.back && picked.colorRule.tapY == b.centerY() && events().isEmpty(), "Action point does not click through"); pass();
+
+        stage = "Color rule editor validation and persistence";
+        click("关闭"); launchMain(); scrollTo("设置颜色规则"); click("设置颜色规则"); click("启用颜色规则");
+        setText("目标颜色（#RRGGBB）", "bad"); click("保存"); require(!store.load(screen).colorRule.enabled, "Invalid color cannot save");
+        setText("目标颜色（#RRGGBB）", "#FFFFFF"); click("保存"); require(store.load(screen).colorRule.enabled, "Valid color saves");
+        screenshot("08-color-config"); launchMain(); click("打开悬浮控制面板"); pass();
+
+        for (boolean back : new boolean[]{true, false}) {
+            stage = back ? "Screen pixel match performs one system Back and resumes" : "Screen pixel match taps recovery target and resumes";
+            colorFixture(back ? "BACK" : "TAP"); Rect targetPoint = requiredNode("恢复页面").bounds;
+            Store.Draft d = colorDraft(screen, a, b, back, targetPoint); store.save(d);
+            click("开始"); await(() -> !TapService.alive().isRunning(), 16000);
+            require(TapService.alive().status().contains("已完成"), "Recovery finished: " + TapService.alive().status());
+            long recoveries = events().stream().filter(e -> "RECOVERY".equals(e.optString("button"))).count();
+            require(recoveries == 1, "Exactly one recovery action: " + events());
+            require(events().stream().anyMatch(e -> "B".equals(e.optString("button")) && "click".equals(e.optString("action"))), "Normal step resumes");
+            saveText(back ? "color-back-events.jsonl" : "color-tap-events.jsonl", shell("run-as org.hachile.tongjitap.fixture cat files/events.jsonl"));
+            screenshot(back ? "09-color-back" : "10-color-tap"); pass();
+        }
+        stage = "Persistent white stops without repeating recovery";
+        colorFixture("STUCK"); store.save(colorDraft(screen, a, b, true, b));
+        click("开始"); await(() -> !TapService.alive().isRunning(), 23000);
+        require(TapService.alive().status().contains("持续存在"), "Persistent match stops visibly: " + TapService.alive().status());
+        require(events().stream().filter(e -> "RECOVERY".equals(e.optString("button"))).count() == 1, "No repeated Back"); pass();
+
+        stage = "Stop cancels in-progress color recovery";
+        colorFixture("STUCK"); store.save(colorDraft(screen, a, b, true, b)); click("开始");
+        await(() -> {
+            try { return events().stream().anyMatch(e -> "RECOVERY".equals(e.optString("button"))); }
+            catch (Exception e) { return false; }
+        }, 9000);
+        click("停止"); int eventCount = events().size(); SystemClock.sleep(2200);
+        require(events().size() == eventCount && !TapService.alive().isRunning(), "No recovery or next step after stop"); pass();
+
+        stage = "Protected screen black mask stops color execution";
+        colorFixture("SECURE"); store.save(colorDraft(screen, a, b, true, b)); click("开始");
+        await(() -> !TapService.alive().isRunning(), 10000);
+        require(TapService.alive().status().contains("无法读取屏幕颜色") || TapService.alive().status().contains("主体区域全黑"),
+            "Protected capture refusal or black mask stops visibly: " + TapService.alive().status());
+        require(events().stream().noneMatch(e -> "RECOVERY".equals(e.optString("button"))), "Masked screen must not trigger recovery"); pass();
+        fixture(true); click("关闭"); store.save(new Store.Draft(screen)); launchMain();
+    }
+    private Store.Draft colorDraft(ScreenInfo screen, Rect a, Rect b, boolean back, Rect recovery) {
+        Store.Draft d = new Store.Draft(screen); d.loops = 1;
+        d.steps.add(new ClickStep(a.centerX(), a.centerY(), 50, 5000));
+        d.steps.add(new ClickStep(b.centerX(), b.centerY(), 50, 0));
+        d.colorRule = new ColorRule(true, screen.width - 40, screen.height / 2, 0xFFFFFF, 0, 2, 500, back, recovery.centerX(), recovery.centerY());
+        return d;
+    }
+    private void colorFixture(String mode) {
+        Intent intent = new Intent().setComponent(new ComponentName("org.hachile.tongjitap.fixture", "org.hachile.tongjitap.fixture.TestActivity"))
+            .setAction("org.hachile.tongjitap.fixture.COLOR_" + mode).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        target.startActivity(intent); SystemClock.sleep(600);
+    }
     private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
     private void await(BooleanSupplier test, long timeout) {
         long deadline = SystemClock.uptimeMillis() + timeout;
@@ -164,9 +240,9 @@ public final class DeviceChecks extends Instrumentation {
         activity = (MainActivity) startActivitySync(intent); waitForIdleSync(); SystemClock.sleep(350);
     }
     private void fixture(boolean reset) {
-        Intent intent = new Intent().setComponent(new ComponentName("org.hachile.lighttap.fixture", "org.hachile.lighttap.fixture.TestActivity"))
+        Intent intent = new Intent().setComponent(new ComponentName("org.hachile.tongjitap.fixture", "org.hachile.tongjitap.fixture.TestActivity"))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        if (reset) intent.setAction("org.hachile.lighttap.fixture.RESET");
+        if (reset) intent.setAction("org.hachile.tongjitap.fixture.RESET");
         target.startActivity(intent); SystemClock.sleep(600);
     }
     private static final class Found {
@@ -227,7 +303,7 @@ public final class DeviceChecks extends Instrumentation {
         }
     }
     private List<JSONObject> events() throws Exception {
-        String raw = shell("run-as org.hachile.lighttap.fixture cat files/events.jsonl");
+        String raw = shell("run-as org.hachile.tongjitap.fixture cat files/events.jsonl");
         ArrayList<JSONObject> events = new ArrayList<>();
         for (String line : raw.split("\n")) if (!line.trim().isEmpty()) events.add(new JSONObject(line));
         return events;

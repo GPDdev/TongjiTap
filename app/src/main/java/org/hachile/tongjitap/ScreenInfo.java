@@ -1,4 +1,4 @@
-package org.hachile.lighttap;
+package org.hachile.tongjitap;
 
 import android.content.Context;
 import android.graphics.Rect;

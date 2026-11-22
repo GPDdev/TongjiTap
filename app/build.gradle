@@ -1,26 +1,26 @@
 plugins { id 'com.android.application' }
 
-def signingFile = rootProject.file('.signing/signing.properties')
+def signingFile = rootProject.file('.signing/tongjitap.properties')
 def signing = new Properties()
 if (signingFile.exists()) signingFile.withInputStream { signing.load(it) }
 
 android {
-    namespace 'org.hachile.lighttap'
+    namespace 'org.hachile.tongjitap'
     compileSdk 36
     defaultConfig {
-        applicationId 'org.hachile.lighttap'
+        applicationId 'org.hachile.tongjitap'
         minSdk 26
         targetSdk 36
-        versionCode 1
-        versionName '0.1.0'
-        testInstrumentationRunner 'org.hachile.lighttap.DeviceChecks'
+        versionCode 2
+        versionName '0.2.0'
+        testInstrumentationRunner 'org.hachile.tongjitap.DeviceChecks'
     }
     signingConfigs {
         release {
             if (signingFile.exists()) {
-                storeFile rootProject.file('.signing/lighttap.jks')
+                storeFile rootProject.file('.signing/tongjitap.jks')
                 storePassword signing.getProperty('storePassword')
-                keyAlias 'lighttap'
+                keyAlias 'tongjitap'
                 keyPassword signing.getProperty('storePassword')
             }
         }

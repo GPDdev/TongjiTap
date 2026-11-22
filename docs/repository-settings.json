@@ -1,6 +1,6 @@
 {
-  "repository": "GPDdev/Tongji-TapLoop",
-  "description": "轻循 / TapLoop: an offline Android tap-sequence assistant with coordinate picking, configurable hold and wait times, finite loops, and visible stop controls. Unofficial.",
+  "repository": "GPDdev/TongjiTap",
+  "description": "循济 TongjiTap — an offline Android tap assistant with customizable sequences, screen color triggers, and floating controls. Unofficial personal project.",
   "homepage": "",
   "topics": [
     "android",
@@ -11,12 +11,13 @@
     "offline",
     "android-app",
     "tongji",
-    "taploop"
+    "tongjitap",
+    "color-detection"
   ],
   "license": "Apache-2.0",
   "default_branch": "main",
-  "release_tag": "v0.1.0",
-  "release_title": "Tongji TapLoop v0.1.0",
+  "release_tag": "v0.2.0",
+  "release_title": "循济 TongjiTap v0.2.0",
   "readme_languages": ["zh", "en"],
   "readme_default": "zh"
 }

@@ -53,7 +53,7 @@ if __name__ == '__main__':
             job.result()
     AVDS.mkdir(exist_ok=True)
     for api in (26, 36):
-        name = f'LightTap{api}'
+        name = f'TongjiTap{api}'
         folder = AVDS / (name + '.avd')
         folder.mkdir(exist_ok=True)
         (AVDS / (name + '.ini')).write_text(f'avd.ini.encoding=UTF-8\npath={folder}\ntarget=android-{api}\n')
@@ -67,4 +67,4 @@ if __name__ == '__main__':
             'fastboot.forceColdBoot': 'yes', 'fastboot.forceFastBoot': 'no', 'showDeviceFrame': 'no',
         }
         (folder / 'config.ini').write_text(''.join(f'{k}={v}\n' for k, v in config.items()))
-    print('AVDs ready: LightTap26, LightTap36', flush=True)
+    print('AVDs ready: TongjiTap26, TongjiTap36', flush=True)

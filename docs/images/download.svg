@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="58" viewBox="0 0 260 58" role="img" aria-label="下载最新版 Download">
+  <rect width="260" height="58" rx="14" fill="#2563eb"/>
+  <path d="M32 16v20m-7-7 7 7 7-7m-16 9v5h18v-5" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="151" y="36" text-anchor="middle" font-family="system-ui,sans-serif" font-size="19" font-weight="600" fill="#fff">下载最新版 / Download</text>
+</svg>

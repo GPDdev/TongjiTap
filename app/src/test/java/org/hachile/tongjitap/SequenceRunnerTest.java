@@ -1,4 +1,4 @@
-package org.hachile.lighttap;
+package org.hachile.tongjitap;
 
 import org.junit.Test;
 import java.util.*;
@@ -87,6 +87,40 @@ public class SequenceRunnerTest {
         ClickPlan p = new ClickPlan(1, 1080, 2400, 0, steps); steps.clear();
         assertEquals(2, p.steps.size());
         assertThrows(UnsupportedOperationException.class, () -> p.steps.clear());
+    }
+    @Test public void interruptionWaitsForGestureAndBlocksNextStepUntilRecovery() {
+        List<SequenceRunner.Result> recovery = new ArrayList<>();
+        runner.start(plan(2)); countdown();
+        assertTrue(runner.interrupt(recovery::add)); assertTrue(recovery.isEmpty());
+        callbacks.get(0).complete(true); assertEquals(1, recovery.size());
+        clock.next(); assertEquals(List.of(100), clicks);
+        recovery.get(0).complete(true); assertEquals(List.of(100, 300), clicks);
+        recovery.get(0).complete(true); assertEquals(2, clicks.size());
+    }
+    @Test public void recoveryDuringWaitPreservesRemainingWait() {
+        List<SequenceRunner.Result> recovery = new ArrayList<>();
+        runner.start(plan(1)); countdown(); callbacks.get(0).complete(true);
+        assertTrue(runner.interrupt(recovery::add)); recovery.get(0).complete(true);
+        assertEquals(List.of(100), clicks); clock.next(); assertEquals(3500, clock.now);
+        assertEquals(List.of(100, 300), clicks);
+    }
+    @Test public void stoppedRecoveryCannotResumeOrAffectNewRun() {
+        List<SequenceRunner.Result> recovery = new ArrayList<>();
+        runner.start(plan(1)); countdown(); callbacks.get(0).complete(true); runner.interrupt(recovery::add);
+        runner.stop("停止"); recovery.get(0).complete(true); assertTrue(clock.tasks.isEmpty());
+        runner.start(plan(1)); recovery.get(0).complete(false); countdown();
+        assertEquals(List.of(100, 100), clicks); assertTrue(runner.isRunning());
+    }
+    @Test public void interruptedFinalGestureFinishesOnlyAfterRecovery() {
+        List<SequenceRunner.Result> recovery = new ArrayList<>();
+        runner.start(new ClickPlan(1, 1080, 2400, 0, List.of(new ClickStep(1, 2, 50, 0)))); countdown();
+        runner.interrupt(recovery::add); callbacks.get(0).complete(true); assertTrue(runner.isRunning());
+        recovery.get(0).complete(true); assertEquals(SequenceRunner.State.FINISHED, runner.state()); assertTrue(clock.tasks.isEmpty());
+    }
+    @Test public void recoveryTimeoutStopsInsteadOfContinuing() {
+        runner.start(plan(1)); countdown(); callbacks.get(0).complete(true); runner.interrupt(done -> {});
+        clock.next(); assertEquals(1, clicks.size()); clock.next();
+        assertEquals(SequenceRunner.State.ERROR, runner.state()); assertTrue(clock.tasks.isEmpty());
     }
     @Test public void validatesBoundaries() {
         assertThrows(IllegalArgumentException.class, () -> new ClickStep(-1, 0, 50, 0));

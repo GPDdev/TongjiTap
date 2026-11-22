@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">轻点助手</string>
-    <string name="service_description">按你设置的坐标、时长和次数执行屏幕点击，并显示取点和停止面板。此权限可以控制其他应用的触摸操作，请只在理解风险时启用。不读取页面、聊天或账号内容，不联网。可随时在此处关闭权限。</string>
+    <string name="app_name">循济</string>
+    <string name="service_description">按你设置的坐标、时长和次数执行点击；可根据颜色规则点击指定位置或执行返回。启用颜色规则时会通过截图读取屏幕像素，图片仅在内存处理，不保存、不上传。可以控制其他应用，请理解后授权；不联网，可随时在此处关闭。</string>
     <string name="service_summary">执行用户配置的屏幕点击序列</string>
 </resources>

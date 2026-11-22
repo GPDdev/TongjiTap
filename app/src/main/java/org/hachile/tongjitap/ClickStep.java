@@ -1,4 +1,4 @@
-package org.hachile.lighttap;
+package org.hachile.tongjitap;
 
 public final class ClickStep {
     public final int x, y, durationMs, waitMs;

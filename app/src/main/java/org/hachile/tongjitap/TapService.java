@@ -1,4 +1,4 @@
-package org.hachile.lighttap;
+package org.hachile.tongjitap;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
@@ -21,12 +21,13 @@ public final class TapService extends AccessibilityService {
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private SequenceRunner runner;
     private ClickPlan activePlan;
+    private ColorMonitor colorMonitor;
     private WindowManager windows;
     private Context themed;
     private Store store;
     private LinearLayout panel;
     private TextView panelStatus;
-    private Button startButton, stopButton, pickButton;
+    private Button startButton, stopButton, pickButton, colorPickButton, actionPickButton;
     private View picker, marker;
     private WindowManager.LayoutParams panelParams;
     private String status = "待命，尚未开始";
@@ -48,6 +49,7 @@ public final class TapService extends AccessibilityService {
             public void cancel(Runnable task) { engineHandler.removeCallbacks(task); }
             public void clear() { engineHandler.removeCallbacksAndMessages(null); }
         }, this::dispatchClick, (state, cycle, step, message) -> {
+            if (state != SequenceRunner.State.COUNTDOWN && state != SequenceRunner.State.RUNNING) stopColorMonitor();
             status = message;
             if (activePlan != null && (state == SequenceRunner.State.COUNTDOWN || state == SequenceRunner.State.RUNNING))
                 status += "\n第 " + cycle + "/" + activePlan.loops + " 轮，第 " + step + "/" + activePlan.steps.size() + " 步";
@@ -75,7 +77,7 @@ public final class TapService extends AccessibilityService {
         TextView handle = new TextView(themed) {
             @Override public boolean performClick() { super.performClick(); return true; }
         };
-        handle.setText("轻点助手　移动面板"); handle.setTextColor(Ui.INK); handle.setTextSize(14);
+        handle.setText("循济　移动面板"); handle.setTextColor(Ui.INK); handle.setTextSize(14);
         handle.setGravity(Gravity.CENTER); handle.setMinHeight(Ui.dp(this, 48)); handle.setClickable(true);
         handle.setContentDescription("移动控制面板，点击左右移位，也可拖动位置");
         handle.setOnClickListener(v -> {
@@ -89,14 +91,18 @@ public final class TapService extends AccessibilityService {
         stopButton = Ui.button(themed, "停止", false, v -> {
             cancelPicker(); removeMarker(); runner.stop("已手动停止");
         });
-        stopButton.setTextColor(Color.rgb(180, 35, 35));
-        row.addView(startButton, new LinearLayout.LayoutParams(0, -2, 1));
-        row.addView(stopButton, new LinearLayout.LayoutParams(0, -2, 1)); panel.addView(row);
+        row.addView(startButton, Ui.actionParams(this));
+        row.addView(stopButton, Ui.actionParams(this)); panel.addView(row);
         LinearLayout bottom = new LinearLayout(themed);
         pickButton = Ui.button(themed, "取点", false, v -> choosePoint());
-        bottom.addView(pickButton, new LinearLayout.LayoutParams(0, -2, 1));
-        bottom.addView(Ui.button(themed, "关闭", false, v -> closePanel()), new LinearLayout.LayoutParams(0, -2, 1));
+        bottom.addView(pickButton, Ui.actionParams(this));
+        bottom.addView(Ui.button(themed, "关闭", false, v -> closePanel()), Ui.actionParams(this));
         panel.addView(bottom);
+        LinearLayout colors = new LinearLayout(themed);
+        colorPickButton = Ui.button(themed, "检测点", false, v -> choosePoint(1));
+        actionPickButton = Ui.button(themed, "动作点", false, v -> choosePoint(2));
+        colors.addView(colorPickButton, Ui.actionParams(this)); colors.addView(actionPickButton, Ui.actionParams(this));
+        panel.addView(colors);
         panelParams = layout(Ui.dp(this, 220), -2, false);
         panelParams.x = Ui.dp(this, 12); panelParams.y = Ui.dp(this, 100);
         handle.setOnTouchListener(new View.OnTouchListener() {
@@ -146,6 +152,8 @@ public final class TapService extends AccessibilityService {
         if (panel == null) return;
         panelStatus.setText(status); startButton.setEnabled(!isRunning() && picker == null);
         pickButton.setEnabled(!isRunning() && picker == null); stopButton.setEnabled(isRunning() || picker != null);
+        colorPickButton.setEnabled(Build.VERSION.SDK_INT >= 30 && !isRunning() && picker == null);
+        actionPickButton.setEnabled(Build.VERSION.SDK_INT >= 30 && !isRunning() && picker == null);
     }
     private boolean unlocked() {
         return getSystemService(PowerManager.class).isInteractive() && !getSystemService(KeyguardManager.class).isKeyguardLocked();
@@ -160,7 +168,8 @@ public final class TapService extends AccessibilityService {
         removeMarker();
         try {
             if (!store.accepted() || !store.runNoticeSeen()) throw new IllegalStateException("请先在应用中阅读并确认用途和运行说明");
-            activePlan = store.load(ScreenInfo.read(this)).plan();
+            Store.Draft draft = store.load(ScreenInfo.read(this));
+            activePlan = draft.plan();
             if (!environmentMatches()) throw new IllegalArgumentException("屏幕尺寸、方向变化或屏幕已锁定，请重新检查坐标");
             Rect bounds = new Rect(); int[] location = new int[2]; panel.getLocationOnScreen(location);
             bounds.set(location[0], location[1], location[0] + panel.getWidth(), location[1] + panel.getHeight());
@@ -168,12 +177,27 @@ public final class TapService extends AccessibilityService {
             for (ClickStep step : activePlan.steps) {
                 if (bounds.contains(step.x, step.y)) throw new IllegalArgumentException("控制面板遮挡了点击坐标，请拖动移开后再开始");
             }
+            ColorRule rule = draft.colorRule;
+            if (rule != null && rule.enabled) {
+                if (Build.VERSION.SDK_INT < 30) throw new IllegalArgumentException("颜色检测需要 Android 11 或更高版本");
+                rule.validateScreen(activePlan.width, activePlan.height);
+                if (obscured(rule.x, rule.y) || (!rule.back && obscured(rule.tapX, rule.tapY)))
+                    throw new IllegalArgumentException("控制面板遮挡颜色规则坐标，请移开后开始");
+            }
+            stopColorMonitor();
             runner.start(activePlan);
+            if (rule != null && rule.enabled && Build.VERSION.SDK_INT >= 30) {
+                colorMonitor = new ColorMonitor(this, runner, rule, activePlan,
+                    () -> environmentMatches() && panel != null && panel.getVisibility() == View.VISIBLE
+                        && !obscured(rule.x, rule.y) && (rule.back || !obscured(rule.tapX, rule.tapY)),
+                    text -> { status = text; updatePanel(); notifyState(); });
+                colorMonitor.start();
+            }
         } catch (IllegalArgumentException | IllegalStateException e) {
             status = e.getMessage(); updatePanel(); notifyState(); toast(status);
         }
     }
-    private boolean dispatchClick(ClickStep step, SequenceRunner.Result result) {
+    boolean dispatchClick(ClickStep step, SequenceRunner.Result result) {
         if (!environmentMatches() || panel == null || panel.getVisibility() != View.VISIBLE) {
             runner.stop("屏幕或控制面板状态变化，已停止"); return false;
         }
@@ -191,13 +215,27 @@ public final class TapService extends AccessibilityService {
         }, engineHandler);
     }
 
+    boolean obscured(int x, int y) {
+        if (panel == null) return true;
+        int[] location = new int[2]; panel.getLocationOnScreen(location);
+        return x >= location[0] && x < location[0] + panel.getWidth()
+            && y >= location[1] && y < location[1] + panel.getHeight();
+    }
+    private void stopColorMonitor() {
+        if (colorMonitor != null) { colorMonitor.stop(); colorMonitor = null; }
+    }
+
     private void choosePoint() {
+        choosePoint(0);
+    }
+    private void choosePoint(int kind) {
         if (isRunning() || picker != null) return;
+        if (kind != 0 && Build.VERSION.SDK_INT < 30) return;
         if (!unlocked()) { toast("请先解锁屏幕"); return; }
         final ScreenInfo screen = ScreenInfo.read(this);
         try {
             Store.Draft d = store.load(screen);
-            if (!screen.matches(d) && !d.steps.isEmpty()) throw new IllegalStateException("屏幕已变化，请返回应用清空旧步骤后重新取点");
+            if (!screen.matches(d) && (!d.steps.isEmpty() || d.colorRule != null)) throw new IllegalStateException("屏幕已变化，请返回应用清空旧步骤后重新取点");
         } catch (IllegalStateException e) { toast(e.getMessage()); return; }
         removeMarker();
         FrameLayout layer = new FrameLayout(themed); layer.setBackgroundColor(0x180F172A);
@@ -206,7 +244,7 @@ public final class TapService extends AccessibilityService {
         };
         target.setContentDescription("点选屏幕上的坐标，选点不会点击下方应用");
         layer.addView(target, new FrameLayout.LayoutParams(-1, -1));
-        TextView hint = Ui.text(themed, "点选位置，记录坐标\n不会点击下方页面", 17, Ui.INK);
+        TextView hint = Ui.text(themed, (kind == 1 ? "点选颜色检测位置" : kind == 2 ? "点选颜色命中后的点击位置" : "点选位置，记录坐标") + "\n不会点击下方页面", 17, Ui.INK);
         hint.setPadding(Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 14));
         hint.setBackground(Ui.background(this, Color.WHITE, 12));
         FrameLayout.LayoutParams hintParams = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
@@ -218,7 +256,7 @@ public final class TapService extends AccessibilityService {
             if (event.getPointerCount() > 1) { cancelPicker(); toast("请一次选择一个位置"); return true; }
             if (event.getActionMasked() == MotionEvent.ACTION_UP) {
                 view.performClick(); int x = Math.round(event.getRawX()), y = Math.round(event.getRawY());
-                cancelPicker(); savePoint(screen, x, y);
+                cancelPicker(); savePoint(screen, x, y, kind);
             } else if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) cancelPicker();
             return true;
         });
@@ -226,23 +264,31 @@ public final class TapService extends AccessibilityService {
         try { windows.addView(picker, layout(-1, -1, false)); updatePanel(); }
         catch (RuntimeException e) { cancelPicker(); toast("无法显示取点层，请检查辅助功能状态"); }
     }
-    private void savePoint(ScreenInfo screen, int x, int y) {
+    private void savePoint(ScreenInfo screen, int x, int y, int kind) {
         try {
             ScreenInfo now = ScreenInfo.read(this);
             if (screen.width != now.width || screen.height != now.height || screen.rotation != now.rotation || !unlocked())
                 throw new IllegalStateException("屏幕已变化，本次取点已取消");
             Store.Draft d = store.load(now);
             if (!now.matches(d)) {
-                if (!d.steps.isEmpty()) throw new IllegalStateException("坐标基准已变化，请重新取点");
+                if (!d.steps.isEmpty() || d.colorRule != null) throw new IllegalStateException("坐标基准已变化，请重新取点");
                 d.width = now.width; d.height = now.height; d.rotation = now.rotation;
             }
-            d.steps.add(new ClickStep(x, y, 50, 500)); store.save(d);
-            status = "已添加第 " + d.steps.size() + " 步 (" + x + ", " + y + ")";
-            showMarker(x, y, d.steps.size()); updatePanel(); notifyState();
+            if (kind == 0) {
+                d.steps.add(new ClickStep(x, y, 50, 500));
+                status = "已添加第 " + d.steps.size() + " 步 (" + x + ", " + y + ")";
+            } else {
+                ColorRule old = d.colorRule == null ? new ColorRule(false, now.width / 2, now.height / 2, 0xFFFFFF, 16, 2, 500, true, 0, 0) : d.colorRule;
+                d.colorRule = new ColorRule(old.enabled, kind == 1 ? x : old.x, kind == 1 ? y : old.y, old.rgb,
+                    old.tolerance, old.confirmations, old.intervalMs, kind == 1 && old.back, kind == 2 ? x : old.tapX, kind == 2 ? y : old.tapY);
+                status = "已记录" + (kind == 1 ? "检测点" : "动作点") + " (" + x + ", " + y + ")\n回应用检查并开启颜色规则";
+            }
+            store.save(d);
+            showMarker(x, y, kind == 0 ? String.valueOf(d.steps.size()) : kind == 1 ? "色" : "点"); updatePanel(); notifyState();
             if (configObserver != null) configObserver.run();
         } catch (IllegalArgumentException | IllegalStateException e) { toast(e.getMessage()); }
     }
-    private void showMarker(int x, int y, int number) {
+    private void showMarker(int x, int y, String number) {
         removeMarker();
         TextView label = Ui.heading(themed, String.valueOf(number), 18); label.setTextColor(Color.WHITE);
         label.setGravity(Gravity.CENTER); label.setBackground(Ui.background(this, Ui.BLUE, 24)); marker = label;

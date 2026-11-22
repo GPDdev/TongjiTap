@@ -1,22 +1,22 @@
-# 已完成：轻点助手 0.1.0
+# 已完成：循济 TongjiTap 0.2.0 本地开发
 
 ## 1. 当前目标
-已完成 Android 8.0 及以上离线多步骤点击器“轻点助手”，交付完整源码、签名 APK、源码 ZIP 和说明。支持手动坐标、屏幕取点、按住与释放后等待、有限次数整组循环、悬浮停止、本地保存和完整用途说明。无待办；不发布远程仓库或商店，不开发学校漏洞预设、隐藏运行或规避检测。
+本版应用开发已完成：正式名称循济 / TongjiTap，应用 ID org.hachile.tongjitap，统一矢量图标、蓝色可操作和灰色禁用按钮、可配置颜色触发返回或点击。仓库地址为 https://github.com/GPDdev/TongjiTap。iOS 经用户决定暂缓，本轮不交付 iOS 安装包。
 
 ## 2. 完成条件
-已满足：10 项核心单元测试、发布版 Lint、APK 构建、v2 签名和 zipalign 检查通过；Android 8.0 与 Android 16 各 11 项真实触摸设备场景通过；签名发布包在两个模拟器冷安装、确认流程和启动检查通过。真实手机和微信小程序不属于已验证范围。
+本地条件全部满足：19 项核心测试、Android 8 的 13 项与 Android 16 的 19 项设备检查通过；正式 APK 构建、Lint、v2 签名、对齐及两个系统冷安装通过。Apache-2.0 保留。具体证据和命令见 VALIDATION.md。
 
 ## 3. 已确认事实
-原生 Java，AGP 8.13.2、Gradle 8.13、compileSdk / targetSdk 36、minSdk 26。无第三方运行时依赖，无 uses-permission 权限，不读取页面节点，不联网；辅助功能服务仅执行手势及显示控制层。实测 A/B/A/B，按住 50/700/50/700 毫秒；取点不穿透、停止、旋转、熄屏和权限撤销均已验证。详情见 VALIDATION.md。
+原生 Java 17，AGP 8.13.2、Gradle 8.13，minSdk 26、targetSdk 36，versionCode 2。基础点击支持 Android 8，颜色检测使用 Android 11+ 的辅助功能截图。配置仅本地保存，不联网、不读页面节点、不保存截图。颜色动作在当前手势结束后执行一次，确认颜色离开后恢复步骤；持续命中、截图错误、全黑主体、停止或环境变化会终止后续调度。
 
 ## 4. 相关文件与命令
-正式应用在 app，独立触摸 fixture 和 app/src/androidTest 仅供验证。`scripts/bootstrap.py` 安装本地工具，`scripts/build-release.ps1` 构建及校验 APK。成品在 dist/lighttap-0.1.0.apk，哈希在对应 .sha256，源码包在 dist/lighttap-0.1.0-source.zip；截图及原始设备记录在 dist/checks。Git 分支 feature/initial，源码与文档保存为本地提交，无远程发布。tools、dist、缓存及签名文件均被忽略。两个专用模拟器名为 LightTap26 和 LightTap36，端口 5556 / 5558；验收结束后已关闭。
+app 为正式应用；fixture 与 app/src/androidTest 为开发测试。ColorRule、ColorMonitor、SequenceRunner、TapService 负责匹配、内存截图、串行执行及控制面板。scripts/build-release.ps1 输出 dist/tongjitap-0.2.0.apk 和 SHA-256。README.md、README.en.md 为已获用户批准的下载和使用说明；docs/repository-settings.json 与 docs/release-notes-v0.2.0.md 记录发布内容。Git 发布操作及最终远程核验由本次本地 handoffs 文件单独记录；公开发布结果以仓库 Releases 为准。
 
 ## 5. 已否决方案
-不采用跨平台框架、服务端、多配置方案或普通悬浮窗权限，现有原生接口满足首版需求。未申请联网、定位、存储或录屏权限；不自动开启辅助功能，不自动恢复任务。
+不以普通 iOS App 冒充能控制其他应用的自动点击器。不使用 OCR、页面节点、隐藏运行或自动恢复。保留历史提交和旧标签。全黑截图无法可靠区分遮罩与正常页面，采取保守停止，不把启发式识别宣传为确定的窗口检测。
 
 ## 6. 风险与待确认项
-真实手机、厂商后台策略、分屏和显示缩放未验证，不能用模拟器结果代替实机。自动点击可能误触，不承诺成绩有效、平台不处理或免责声明免责。停止取消后续调度，已提交手势可能仍需完成。未来升级须私下备份并复用被忽略的 .signing 目录，递增 versionCode；绝不可提交密钥、密码或将其写入交接。普通沙箱网络不可用，工具下载需获准的提升权限执行。
+无本地开发待办。真实手机和微信未验证；坐标、颜色、容差需用户校准。新应用 ID 属于独立安装，旧配置不迁移。后续更新应递增 versionCode，私下备份并复用 .signing 中的正式签名，不得提交或共享密钥。SDK、dist、缓存和本机配置不进入 Git。
 
 ## 7. 下一步动作
-无，任务已完成。
+无，本版本地开发已完成。后续功能以新的用户需求为准。
