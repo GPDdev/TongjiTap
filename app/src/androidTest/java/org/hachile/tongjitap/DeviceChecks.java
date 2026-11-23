@@ -20,8 +20,9 @@ public final class DeviceChecks extends Instrumentation {
     private MainActivity activity;
     private int passed;
     private String stage = "setup";
+    private boolean newUiOnly;
 
-    @Override public void onCreate(Bundle args) { super.onCreate(args); start(); }
+    @Override public void onCreate(Bundle args) { super.onCreate(args); newUiOnly = args != null && "new-ui".equals(args.getString("only")); start(); }
     @Override public void onStart() {
         Bundle result = new Bundle();
         try {
@@ -31,6 +32,17 @@ public final class DeviceChecks extends Instrumentation {
             info.flags |= AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS; automation.setServiceInfo(info);
             shell("settings put system accelerometer_rotation 0"); shell("settings put system user_rotation 0");
             shell("input keyevent 224"); shell("wm dismiss-keyguard");
+            if (newUiOnly) {
+                ScreenInfo screen = ScreenInfo.read(target); store.accept(); store.markRunNotice(); store.save(new Store.Draft(screen));
+                launchMain(); shell("settings put secure enabled_accessibility_services ''"); SystemClock.sleep(500);
+                shell("settings put secure enabled_accessibility_services org.hachile.tongjitap/.TapService");
+                shell("settings put secure accessibility_enabled 1"); await(() -> TapService.alive() != null, 8000);
+                fixture(true); Rect a = requiredNode("目标 A").bounds, b = requiredNode("目标 B").bounds;
+                runPresentationChecks();
+                if (Build.VERSION.SDK_INT >= 30) runScreenshotChecks(screen, a, b);
+                result.putString("stream", "\nPASS: " + passed + " focused new-UI scenarios\n");
+                finish(Activity.RESULT_OK, result); return;
+            }
 
             stage = "Explicit consent"; launchMain();
             AccessibilityNodeInfo agree = node("同意并进入"); require(agree != null && !agree.isEnabled(), "Consent must start disabled");
@@ -149,6 +161,8 @@ public final class DeviceChecks extends Instrumentation {
             launchMain(); screenshot("05-after-checks"); pass();
 
             runColorChecks(screen, a, b);
+            runPresentationChecks();
+            if (Build.VERSION.SDK_INT >= 30) runScreenshotChecks(screen, a, b);
 
             result.putString("stream", "\nPASS: " + passed + " device scenarios on API " + Build.VERSION.SDK_INT + "\n");
             result.putInt("passed", passed); finish(Activity.RESULT_OK, result);
@@ -166,6 +180,7 @@ public final class DeviceChecks extends Instrumentation {
         if (Build.VERSION.SDK_INT < 30) {
             stage = "Color feature is visibly unavailable below Android 11";
             scrollTo("设置颜色规则"); require(!requiredNode("设置颜色规则").node.isEnabled(), "Unsupported feature must be disabled");
+            require(!requiredNode("从截图选点取色").node.isEnabled(), "Screenshot import must be disabled below Android 11");
             screenshot("07-color-unavailable"); pass(); return;
         }
         stage = "Color point picking does not insert normal steps";
@@ -190,7 +205,7 @@ public final class DeviceChecks extends Instrumentation {
             require(TapService.alive().status().contains("已完成"), "Recovery finished: " + TapService.alive().status());
             long recoveries = events().stream().filter(e -> "RECOVERY".equals(e.optString("button"))).count();
             require(recoveries == 1, "Exactly one recovery action: " + events());
-            require(events().stream().anyMatch(e -> "B".equals(e.optString("button")) && "click".equals(e.optString("action"))), "Normal step resumes");
+            await(() -> hasClick("B"), 2000);
             saveText(back ? "color-back-events.jsonl" : "color-tap-events.jsonl", shell("run-as org.hachile.tongjitap.fixture cat files/events.jsonl"));
             screenshot(back ? "09-color-back" : "10-color-tap"); pass();
         }
@@ -223,6 +238,131 @@ public final class DeviceChecks extends Instrumentation {
         d.steps.add(new ClickStep(b.centerX(), b.centerY(), 50, 0));
         d.colorRule = new ColorRule(true, screen.width - 40, screen.height / 2, 0xFFFFFF, 0, 2, 500, back, recovery.centerX(), recovery.centerY());
         return d;
+    }
+    private void runPresentationChecks() throws Exception {
+        stage = "QQ clipboard and bottom project link";
+        launchMain(); scrollTo("QQ交流群号：934139029"); click("QQ交流群号：934139029");
+        runOnMainSync(() -> {
+            ClipboardManager clipboard = activity.getSystemService(ClipboardManager.class);
+            require(clipboard.hasPrimaryClip() && "934139029".contentEquals(clipboard.getPrimaryClip().getItemAt(0).getText()), "Exact QQ group copied");
+        });
+        final String[] opened = {null};
+        ActivityMonitor linkMonitor = new ActivityMonitor() {
+            @Override public ActivityResult onStartActivity(Intent intent) {
+                if (!Intent.ACTION_VIEW.equals(intent.getAction())) return null;
+                opened[0] = intent.getDataString(); return new ActivityResult(Activity.RESULT_CANCELED, null);
+            }
+        };
+        addMonitor(linkMonitor);
+        try { scrollTo("Powered by GPDdev"); click("Powered by GPDdev"); }
+        finally { removeMonitor(linkMonitor); }
+        require("https://github.com/GPDdev/TongjiTap".equals(opened[0]), "Footer opens the project URL");
+        screenshot("14-community"); pass();
+
+        stage = "Native adaptive icon proportions and consistent typography";
+        runOnMainSync(() -> {
+            checkTypography(activity.getWindow().getDecorView());
+            AlertDialog dialog = Ui.dialog(activity, "字号检查").setMessage("正文内容").setPositiveButton("关闭", null).show();
+            try { checkTypography(dialog.getWindow().getDecorView()); } finally { dialog.dismiss(); }
+        });
+        Bitmap adaptive = drawIcon(target.getDrawable(R.mipmap.ic_launcher)), brand = drawIcon(target.getDrawable(R.drawable.ic_launcher));
+        Rect adaptiveMark = artworkBounds(adaptive), brandMark = artworkBounds(brand);
+        require(Math.abs(adaptiveMark.width() - brandMark.width()) <= 3 && Math.abs(adaptiveMark.height() - brandMark.height()) <= 3,
+            "Launcher artwork matches brand proportions: " + adaptiveMark + " / " + brandMark);
+        require(adaptiveMark.width() > 100 && adaptiveMark.width() < 130, "Arrow occupies about half the 216 px icon");
+        saveBitmap("15-launcher-icon", adaptive); saveBitmap("16-brand-icon", brand); adaptive.recycle(); brand.recycle(); pass();
+    }
+    private void checkTypography(View view) {
+        if (view instanceof android.widget.TextView) {
+            android.widget.TextView text = (android.widget.TextView) view;
+            if (text.getText().length() > 0) {
+                float size = text.getTextSize(); boolean matched = false;
+                for (int sp : new int[]{16, 20, 30}) matched |= Math.abs(size - android.util.TypedValue.applyDimension(
+                    android.util.TypedValue.COMPLEX_UNIT_SP, sp, target.getResources().getDisplayMetrics())) < .5f;
+                require(matched, "Unexpected font size " + size + " for " + text.getText());
+            }
+        }
+        if (view instanceof ViewGroup) for (int i = 0; i < ((ViewGroup) view).getChildCount(); i++) checkTypography(((ViewGroup) view).getChildAt(i));
+    }
+    private Bitmap drawIcon(android.graphics.drawable.Drawable icon) {
+        Bitmap bitmap = Bitmap.createBitmap(216, 216, Bitmap.Config.ARGB_8888);
+        icon.setBounds(0, 0, 216, 216); icon.draw(new Canvas(bitmap)); return bitmap;
+    }
+    private Rect artworkBounds(Bitmap bitmap) {
+        Rect bounds = new Rect();
+        for (int y = 0; y < bitmap.getHeight(); y++) for (int x = 0; x < bitmap.getWidth(); x++) {
+            int c = bitmap.getPixel(x, y);
+            if (Color.alpha(c) > 240 && Color.red(c) > 150 && Color.green(c) > 180 && Color.blue(c) > 200) bounds.union(x, y, x + 1, y + 1);
+        }
+        return bounds;
+    }
+    private void runScreenshotChecks(ScreenInfo screen, Rect a, Rect b) throws Exception {
+        stage = "Imported pixel coordinates drive real screen color recovery";
+        Store.Draft draft = new Store.Draft(screen); draft.loops = 1;
+        draft.steps.add(new ClickStep(a.centerX(), a.centerY(), 50, 5000));
+        draft.steps.add(new ClickStep(b.centerX(), b.centerY(), 50, 0)); store.save(draft); launchMain();
+        importFixture("full", screen); require(!requiredNode("使用并开启").node.isEnabled(), "Selection required before confirmation");
+        selectPixel(screen, screen.width - 40, screen.height / 2); screenshot("17-screenshot-picker"); click("使用并开启");
+        ColorRule picked = store.load(screen).colorRule;
+        require(picked.enabled && picked.back && picked.rgb == 0xFFFFFF, "Imported white enables default Back action");
+        require(Math.abs(picked.x - (screen.width - 40)) < 4 && Math.abs(picked.y - screen.height / 2) < 4,
+            "Original pixel coordinates persist: " + picked.x + ", " + picked.y);
+        click("打开悬浮控制面板"); colorFixture("BACK"); click("开始");
+        await(() -> !TapService.alive().isRunning(), 17000);
+        require(TapService.alive().status().contains("已完成"), "Imported rule resumes sequence: " + TapService.alive().status());
+        require(events().stream().filter(e -> "RECOVERY".equals(e.optString("button"))).count() == 1, "Imported rule triggers one actual Back");
+        await(() -> hasClick("B"), 2000); // The fixture's posted OnClick can run after the gesture completion callback.
+        saveText("import-color-events.jsonl", shell("run-as org.hachile.tongjitap.fixture cat files/events.jsonl")); click("关闭"); pass();
+
+        stage = "Image selection preserves custom settings and cancellation preserves saved rule";
+        draft = store.load(screen); draft.colorRule = new ColorRule(false, 20, 30, 0x123456, 8, 3, 700, false, 100, 900); store.save(draft); launchMain();
+        importFixture("full", screen); selectPixel(screen, screen.width / 4, screen.height / 2); click("使用并开启");
+        ColorRule preserved = store.load(screen).colorRule;
+        require(preserved.enabled && preserved.rgb == 0x12AB34 && preserved.tolerance == 8 && preserved.confirmations == 3
+                && preserved.intervalMs == 700 && !preserved.back && preserved.tapX == 100 && preserved.tapY == 900, "Custom action and sampling settings preserved");
+        require(store.load(screen).steps.size() == 2, "Import does not insert click steps");
+        String before = target.getSharedPreferences("tongjitap", 0).getString("draft", "");
+        importFixture("full", screen); selectPixel(screen, screen.width - 40, screen.height / 2); click("取消");
+        require(before.equals(target.getSharedPreferences("tongjitap", 0).getString("draft", "")), "Cancel leaves saved data untouched"); pass();
+
+        stage = "Cropped, corrupt and transparent images cannot save invalid rules";
+        for (String kind : new String[]{"cropped", "broken"}) {
+            importFixture(kind, screen); await(() -> node("正在读取截图") == null, 5000); SystemClock.sleep(300);
+            require(node("使用并开启") == null, "Invalid image must not open pixel selection: " + kind);
+            require(before.equals(target.getSharedPreferences("tongjitap", 0).getString("draft", "")), "Bad image cannot alter config");
+        }
+        importFixture("transparent", screen); selectPixel(screen, screen.width / 2, screen.height / 2);
+        require(!requiredNode("使用并开启").node.isEnabled(), "Transparent pixel is not a screen color"); click("取消");
+        store.save(new Store.Draft(screen)); launchMain(); pass();
+    }
+    private void importFixture(String kind, ScreenInfo screen) throws Exception {
+        // Intercept only the system picker result; exercise the real cross-process content URI, decoder, view and save flow.
+        android.net.Uri uri = android.net.Uri.parse("content://org.hachile.tongjitap.fixture.screenshots/"
+                + kind + "?width=" + screen.width + "&height=" + screen.height);
+        Intent grant = new Intent().setComponent(new ComponentName("org.hachile.tongjitap.fixture", "org.hachile.tongjitap.fixture.TestActivity"))
+            .setAction("org.hachile.tongjitap.fixture.GRANT_SCREENSHOT").setData(uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        target.startActivity(grant); SystemClock.sleep(350); launchMain();
+        ActivityMonitor monitor = new ActivityMonitor() {
+            @Override public ActivityResult onStartActivity(Intent intent) {
+                if (!Intent.ACTION_OPEN_DOCUMENT.equals(intent.getAction())) return null;
+                require("image/*".equals(intent.getType()) && intent.getBooleanExtra(Intent.EXTRA_LOCAL_ONLY, false), "Local image picker contract");
+                return new ActivityResult(Activity.RESULT_OK, new Intent().setData(uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));
+            }
+        };
+        addMonitor(monitor);
+        try { scrollTo("从截图选点取色"); click("从截图选点取色"); click("选择截图"); }
+        finally { removeMonitor(monitor); }
+        if (!"cropped".equals(kind) && !"broken".equals(kind)) requiredNode("使用并开启");
+    }
+    private void selectPixel(ScreenInfo screen, int x, int y) {
+        waitForIdleSync(); SystemClock.sleep(500); // Let the full-height dialog's opening animation settle.
+        Rect preview = requiredNode("截图选点区域，点按或拖动选择检测位置").bounds;
+        float scale = Math.min((float) preview.width() / screen.width, (float) preview.height() / screen.height);
+        tap(Math.round(preview.centerX() + (x - screen.width / 2f) * scale), Math.round(preview.centerY() + (y - screen.height / 2f) * scale));
+    }
+    private void saveBitmap(String name, Bitmap bitmap) throws IOException {
+        File folder = new File(target.getFilesDir(), "checks"); if (!folder.exists() && !folder.mkdirs()) throw new IOException("mkdir");
+        try (FileOutputStream out = new FileOutputStream(new File(folder, name + ".png"))) { bitmap.compress(Bitmap.CompressFormat.PNG, 100, out); }
     }
     private void colorFixture(String mode) {
         Intent intent = new Intent().setComponent(new ComponentName("org.hachile.tongjitap.fixture", "org.hachile.tongjitap.fixture.TestActivity"))
@@ -307,6 +447,10 @@ public final class DeviceChecks extends Instrumentation {
         ArrayList<JSONObject> events = new ArrayList<>();
         for (String line : raw.split("\n")) if (!line.trim().isEmpty()) events.add(new JSONObject(line));
         return events;
+    }
+    private boolean hasClick(String button) {
+        try { return events().stream().anyMatch(e -> button.equals(e.optString("button")) && "click".equals(e.optString("action"))); }
+        catch (Exception e) { throw new IllegalStateException("Cannot read fixture events", e); }
     }
     private void saveText(String name, String text) throws IOException {
         File folder = new File(target.getFilesDir(), "checks"); if (!folder.exists() && !folder.mkdirs()) throw new IOException("mkdir");

@@ -24,6 +24,8 @@ public final class TestActivity extends Activity {
         }
         blocker = null;
         String action = getIntent().getAction() == null ? "" : getIntent().getAction();
+        if ("org.hachile.tongjitap.fixture.GRANT_SCREENSHOT".equals(action) && getIntent().getData() != null)
+            grantUriPermission("org.hachile.tongjitap", getIntent().getData(), Intent.FLAG_GRANT_READ_URI_PERMISSION);
         if ("org.hachile.tongjitap.fixture.RESET".equals(action) || action.contains(".COLOR_")) {
             try (FileOutputStream out = openFileOutput("events.jsonl", MODE_PRIVATE)) { out.flush(); }
             catch (Exception e) { throw new IllegalStateException(e); }
@@ -36,6 +38,8 @@ public final class TestActivity extends Activity {
         page.addView(title, heading);
         addButton(page, "A", 560); addButton(page, "B", 220);
         if (action.contains(".COLOR_")) {
+            // The restored screen must differ from white by more than the default tolerance (16).
+            page.setBackgroundColor(Color.rgb(218, 231, 250));
             stayWhite = action.endsWith("STUCK");
             blocker = new FrameLayout(this); blocker.setBackgroundColor(Color.WHITE); blocker.setClickable(true);
             // Material buttons have elevation: the test overlay must cover their touch surfaces too.

@@ -43,7 +43,7 @@ def main():
                 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk',
                 'fixture/build/outputs/apk/debug/fixture-debug.apk'):
         print(adb('install', '-r', str(ROOT / apk)).strip(), flush=True)
-    output = adb('shell', 'am', 'instrument', '-w', '-r', 'org.hachile.tongjitap.test/org.hachile.tongjitap.DeviceChecks')
+    output = adb('shell', 'am', 'instrument', '-w', '-r', 'org.hachile.tongjitap.test/org.hachile.tongjitap.DeviceChecks', timeout=420)
     (folder / 'device-result.txt').write_text(output, encoding='utf-8')
     print(output, flush=True)
     filenames = adb('exec-out', 'run-as', 'org.hachile.tongjitap', 'ls', '-1', 'files/checks', check=False).splitlines()
@@ -51,7 +51,7 @@ def main():
         if re.fullmatch(r'[\w.-]+\.(png|jsonl)', name):
             (folder / name).write_bytes(adb('exec-out', 'run-as', 'org.hachile.tongjitap', 'cat', 'files/checks/' + name, binary=True))
     (folder / 'logcat.txt').write_text(adb('logcat', '-d', '-t', '1500'), encoding='utf-8')
-    expected = 13 if avd == 'TongjiTap26' else 19
+    expected = 15 if avd == 'TongjiTap26' else 24
     if f'PASS: {expected} device scenarios' not in output or 'FAIL:' in output:
         raise SystemExit('Device checks failed. See ' + str(folder))
     (folder / 'failure.png').unlink(missing_ok=True)

@@ -1,6 +1,7 @@
 package org.hachile.tongjitap;
 
 import android.content.Context;
+import android.app.AlertDialog;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -13,17 +14,26 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 final class Ui {
+    static final int TITLE_SP = 30, SUBTITLE_SP = 20, BODY_SP = 16;
     static final int BLUE = Color.rgb(37, 99, 235), INK = Color.rgb(21, 32, 53), MUTED = Color.rgb(83, 98, 120);
     static int dp(Context c, int n) { return Math.round(n * c.getResources().getDisplayMetrics().density); }
     static LinearLayout column(Context c) {
         LinearLayout v = new LinearLayout(c); v.setOrientation(LinearLayout.VERTICAL); return v;
     }
-    static TextView text(Context c, String text, int size, int color) {
-        TextView v = new TextView(c); v.setText(text); v.setTextSize(size); v.setTextColor(color);
+    static TextView text(Context c, String text, int color) {
+        TextView v = new TextView(c); v.setText(text); v.setTextSize(BODY_SP); v.setTextColor(color);
         v.setLineSpacing(dp(c, 3), 1); return v;
     }
-    static TextView heading(Context c, String text, int size) {
-        TextView v = text(c, text, size, INK); v.setTypeface(null, Typeface.BOLD); return v;
+    static TextView heading(Context c, String text) {
+        TextView v = text(c, text, INK); v.setTextSize(SUBTITLE_SP); v.setTypeface(null, Typeface.BOLD); return v;
+    }
+    static TextView title(Context c, String text) {
+        TextView v = heading(c, text); v.setTextSize(TITLE_SP); return v;
+    }
+    static AlertDialog.Builder dialog(Context c, String title) {
+        TextView heading = heading(c, title);
+        heading.setPadding(dp(c, 24), dp(c, 20), dp(c, 24), dp(c, 8));
+        return new AlertDialog.Builder(c).setCustomTitle(heading);
     }
     static GradientDrawable background(Context c, int color, int radius) {
         GradientDrawable d = new GradientDrawable(); d.setColor(color); d.setCornerRadius(dp(c, radius)); return d;
@@ -35,7 +45,7 @@ final class Ui {
         return v;
     }
     static Button button(Context c, String text, boolean primary, View.OnClickListener click) {
-        Button b = new Button(c); b.setText(text); b.setAllCaps(false); b.setTextSize(15);
+        Button b = new Button(c); b.setText(text); b.setAllCaps(false); b.setTextSize(BODY_SP);
         b.setMinHeight(dp(c, 48)); b.setMinimumHeight(dp(c, 48)); b.setMinWidth(0); b.setMinimumWidth(0);
         int[][] states = {{-android.R.attr.state_enabled}, {}};
         b.setTextColor(new ColorStateList(states, new int[]{Color.rgb(111, 120, 134), primary ? Color.WHITE : BLUE}));

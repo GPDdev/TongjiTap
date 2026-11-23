@@ -77,7 +77,7 @@ public final class TapService extends AccessibilityService {
         TextView handle = new TextView(themed) {
             @Override public boolean performClick() { super.performClick(); return true; }
         };
-        handle.setText("循济　移动面板"); handle.setTextColor(Ui.INK); handle.setTextSize(14);
+        handle.setText("循济　移动面板"); handle.setTextColor(Ui.INK); handle.setTextSize(Ui.SUBTITLE_SP);
         handle.setGravity(Gravity.CENTER); handle.setMinHeight(Ui.dp(this, 48)); handle.setClickable(true);
         handle.setContentDescription("移动控制面板，点击左右移位，也可拖动位置");
         handle.setOnClickListener(v -> {
@@ -85,7 +85,7 @@ public final class TapService extends AccessibilityService {
             panelParams.x = panelParams.x < screen.width / 2 ? screen.width - panel.getWidth() - Ui.dp(this, 12) : Ui.dp(this, 12);
             repositionPanel();
         }); panel.addView(handle);
-        panelStatus = Ui.text(themed, status, 13, Ui.MUTED); panelStatus.setMinHeight(Ui.dp(this, 48)); panel.addView(panelStatus);
+        panelStatus = Ui.text(themed, status, Ui.MUTED); panelStatus.setMinHeight(Ui.dp(this, 48)); panel.addView(panelStatus);
         LinearLayout row = new LinearLayout(themed);
         startButton = Ui.button(themed, "开始", true, v -> startRun());
         stopButton = Ui.button(themed, "停止", false, v -> {
@@ -244,7 +244,7 @@ public final class TapService extends AccessibilityService {
         };
         target.setContentDescription("点选屏幕上的坐标，选点不会点击下方应用");
         layer.addView(target, new FrameLayout.LayoutParams(-1, -1));
-        TextView hint = Ui.text(themed, (kind == 1 ? "点选颜色检测位置" : kind == 2 ? "点选颜色命中后的点击位置" : "点选位置，记录坐标") + "\n不会点击下方页面", 17, Ui.INK);
+        TextView hint = Ui.text(themed, (kind == 1 ? "点选颜色检测位置" : kind == 2 ? "点选颜色命中后的点击位置" : "点选位置，记录坐标") + "\n不会点击下方页面", Ui.INK);
         hint.setPadding(Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 14));
         hint.setBackground(Ui.background(this, Color.WHITE, 12));
         FrameLayout.LayoutParams hintParams = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
@@ -290,7 +290,7 @@ public final class TapService extends AccessibilityService {
     }
     private void showMarker(int x, int y, String number) {
         removeMarker();
-        TextView label = Ui.heading(themed, String.valueOf(number), 18); label.setTextColor(Color.WHITE);
+        TextView label = Ui.heading(themed, String.valueOf(number)); label.setTextColor(Color.WHITE);
         label.setGravity(Gravity.CENTER); label.setBackground(Ui.background(this, Ui.BLUE, 24)); marker = label;
         int size = Ui.dp(this, 40); WindowManager.LayoutParams params = layout(size, size, true);
         params.x = x - size / 2; params.y = y - size / 2;

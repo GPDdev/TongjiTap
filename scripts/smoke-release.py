@@ -25,7 +25,7 @@ def smoke(pair):
     if not (ROOT / f'tools/avds/TongjiTap{api}.avd').exists():
         raise RuntimeError('Project AVD definition missing')
     subprocess.run([str(ADB), '-s', serial, 'uninstall', 'org.hachile.tongjitap'], capture_output=True)
-    assert 'Success' in adb('install', str(ROOT / 'dist/tongjitap-0.2.0.apk'))
+    assert 'Success' in adb('install', str(ROOT / 'dist/tongjitap-0.2.1.apk'))
     adb('shell', 'am', 'start', '-W', '-n', 'org.hachile.tongjitap/.MainActivity')
     time.sleep(.5)
 
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     with ThreadPoolExecutor(max_workers=2) as pool:
         list(pool.map(smoke, [(26, 5556), (36, 5558)]))
     p = subprocess.run([str(ROOT / 'tools/android-sdk/build-tools/35.0.0/aapt.exe'), 'dump', 'permissions',
-                        str(ROOT / 'dist/tongjitap-0.2.0.apk')], capture_output=True, check=True, text=True)
+                        str(ROOT / 'dist/tongjitap-0.2.1.apk')], capture_output=True, check=True, text=True)
     assert 'uses-permission:' not in p.stdout
     (ROOT / 'dist/checks/release-permissions.txt').write_text(p.stdout, encoding='utf-8')
     print('Release requested permissions: none', flush=True)

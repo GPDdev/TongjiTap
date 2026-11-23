@@ -1,22 +1,24 @@
-# 已完成：循济 TongjiTap 0.2.0 本地开发
+# 已完成：循济 TongjiTap 0.2.1 本地开发
 
 ## 1. 当前目标
-本版应用开发已完成：正式名称循济 / TongjiTap，应用 ID org.hachile.tongjitap，统一矢量图标、蓝色可操作和灰色禁用按钮、可配置颜色触发返回或点击。仓库地址为 https://github.com/GPDdev/TongjiTap。iOS 经用户决定暂缓，本轮不交付 iOS 安装包。
+应用与文档的本地开发已完成：修正桌面图标缩放，统一中文字号，增加 QQ 群号 934139029 点击复制、底部 Powered by GPDdev 项目链接及本机截图选点取色。iOS 继续暂缓。GitHub 地址为 https://github.com/GPDdev/TongjiTap；最终远程发布核验记录在本机 handoffs/2026-11-23-tongjitap-0.2.1.md，公开安装包以 Releases 为准。
 
 ## 2. 完成条件
-本地条件全部满足：19 项核心测试、Android 8 的 13 项与 Android 16 的 19 项设备检查通过；正式 APK 构建、Lint、v2 签名、对齐及两个系统冷安装通过。Apache-2.0 保留。具体证据和命令见 VALIDATION.md。
+23 项核心测试、Android 8 的 15 项和 Android 16 的 24 项设备场景通过；Lint 无问题；正式 APK 签名、对齐和双系统冷安装通过。已用正式包验证 0.2.0 覆盖升级保留设置，以及真实系统文件选择器导入截图、选取原图坐标与 RGB 后保存。Apache-2.0 保留。证据见 VALIDATION.md。
 
 ## 3. 已确认事实
-原生 Java 17，AGP 8.13.2、Gradle 8.13，minSdk 26、targetSdk 36，versionCode 2。基础点击支持 Android 8，颜色检测使用 Android 11+ 的辅助功能截图。配置仅本地保存，不联网、不读页面节点、不保存截图。颜色动作在当前手势结束后执行一次，确认颜色离开后恢复步骤；持续命中、截图错误、全黑主体、停止或环境变化会终止后续调度。
+应用 ID org.hachile.tongjitap 不变，versionName 0.2.1、versionCode 3，复用正式签名和配置格式。基础点击需要 Android 8+，颜色功能需要 Android 11+。导入只设置检测位置和目标颜色，运行时仍读取实时屏幕像素；图片本机处理，不保存副本、不上传，没有新增网络或存储权限。只有匹配当前完整屏幕尺寸的图片可以导入，保存时重新检查屏幕和运行状态。
 
 ## 4. 相关文件与命令
-app 为正式应用；fixture 与 app/src/androidTest 为开发测试。ColorRule、ColorMonitor、SequenceRunner、TapService 负责匹配、内存截图、串行执行及控制面板。scripts/build-release.ps1 输出 dist/tongjitap-0.2.0.apk 和 SHA-256。README.md、README.en.md 为已获用户批准的下载和使用说明；docs/repository-settings.json 与 docs/release-notes-v0.2.0.md 记录发布内容。Git 发布操作及最终远程核验由本次本地 handoffs 文件单独记录；公开发布结果以仓库 Releases 为准。
+MainActivity.java 与 Ui.java 管理主界面、群号、链接和字号；ScreenshotImport.java、ScreenshotPickerView.java、ScreenshotSelection.java 管理系统选图、解码、预览和坐标映射；ic_foreground.xml 修正自适应前景比例。AGENTS.md 记录默认只递增版本末位的规则。开发分支 codex/tongjitap-0.2.1，发布分支 main，版本标签 v0.2.1。
+
+scripts/test-core.ps1、scripts/check-device.py、scripts/build-release.ps1 和 scripts/smoke-release.py 为复现入口。正式包位于 dist/tongjitap-0.2.1.apk；设备证据位于 dist/checks。tools/release-ui-check-0.2.1.py 是本机升级与系统选图核验脚本，不随源码发布。README.md、README.en.md、docs/repository-settings.json 和 docs/release-notes-v0.2.1.md 已同步版本、群号与功能说明。
 
 ## 5. 已否决方案
-不以普通 iOS App 冒充能控制其他应用的自动点击器。不使用 OCR、页面节点、隐藏运行或自动恢复。保留历史提交和旧标签。全黑截图无法可靠区分遮罩与正常页面，采取保守停止，不把启发式识别宣传为确定的窗口检测。
+不按裁剪图或长截图猜测屏幕坐标；不把导入图片当作实时检测。不更换应用 ID 或正式签名，不改写历史提交和旧标签。不以普通 iOS App 宣称可以控制微信。全黑截图仍采取保守停止，不能据此识别所有受保护窗口。
 
 ## 6. 风险与待确认项
-无本地开发待办。真实手机和微信未验证；坐标、颜色、容差需用户校准。新应用 ID 属于独立安装，旧配置不迁移。后续更新应递增 versionCode，私下备份并复用 .signing 中的正式签名，不得提交或共享密钥。SDK、dist、缓存和本机配置不进入 Git。
+无本地开发待办。真实手机、微信、其他尺寸和厂商系统尚未实测。应选择两种页面颜色差异明显的位置，必要时调小容差。私下备份并复用 .signing 中的正式签名，禁止提交或共享密钥。SDK、dist、工具缓存和本机配置不进入 Git。
 
 ## 7. 下一步动作
-无，本版本地开发已完成。后续功能以新的用户需求为准。
+无，本版本地开发已完成；后续需求另开版本，默认从 0.2.1 递增为 0.2.2。远程发布状态以本机发布交接文件和 GitHub Releases 为准。
