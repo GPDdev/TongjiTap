@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">循济</string>
-    <string name="service_description">按你设置的坐标、时长和次数执行点击；可根据颜色规则点击指定位置或执行返回。启用颜色规则时会通过截图读取屏幕像素，图片仅在内存处理，不保存、不上传。可以控制其他应用，请理解后授权；不联网，可随时在此处关闭。</string>
-    <string name="service_summary">执行用户配置的屏幕点击序列</string>
+    <string name="service_description">按你的设置执行点击、返回和颜色检测；跃点会读取屏幕中的绿点与里程，并操作系统快捷面板的 Wi-Fi 开关。画面在内存中处理，不保存截图、不上传截图。切换网络可能消耗流量。请理解后自行授权和开始，可随时在此处关闭。音乐功能无需此权限。</string>
+    <string name="service_summary">点击序列、颜色检测与用户配置的网络切换</string>
 </resources>

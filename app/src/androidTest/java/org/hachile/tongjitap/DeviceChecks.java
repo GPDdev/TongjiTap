@@ -13,17 +13,19 @@ import java.util.*;
 import java.util.function.BooleanSupplier;
 
 /** Run only on disposable emulators: changes their accessibility, rotation and screen settings. */
-public final class DeviceChecks extends Instrumentation {
+@androidx.annotation.OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)
+public final class DeviceChecks extends IntegrationChecks {
     private UiAutomation automation;
     private Context target;
     private Store store;
     private MainActivity activity;
     private int passed;
     private String stage = "setup";
-    private boolean newUiOnly;
+    private boolean newUiOnly, formalUi, integration;
 
-    @Override public void onCreate(Bundle args) { super.onCreate(args); newUiOnly = args != null && "new-ui".equals(args.getString("only")); start(); }
+    @Override public void onCreate(Bundle args) { super.onCreate(args); newUiOnly = args != null && "new-ui".equals(args.getString("only")); formalUi = args != null && "v1".equals(args.getString("only")); integration = args != null && "integration".equals(args.getString("only")); start(); }
     @Override public void onStart() {
+        if (integration) { super.onStart(); return; }
         Bundle result = new Bundle();
         try {
             target = getTargetContext(); store = new Store(target);
@@ -32,6 +34,11 @@ public final class DeviceChecks extends Instrumentation {
             info.flags |= AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS; automation.setServiceInfo(info);
             shell("settings put system accelerometer_rotation 0"); shell("settings put system user_rotation 0");
             shell("input keyevent 224"); shell("wm dismiss-keyguard");
+            if (formalUi) {
+                runFormalChecks(); result.putString("stream", "\nPASS: " + passed + " formal UI scenarios\n");
+                finish(Activity.RESULT_OK, result); return;
+            }
+            target.getSharedPreferences("app", 0).edit().putBoolean("tutorialDone", true).putBoolean("starShown", true).putString("language", "zh").putString("theme", "light").commit();
             if (newUiOnly) {
                 ScreenInfo screen = ScreenInfo.read(target); store.accept(); store.markRunNotice(); store.save(new Store.Draft(screen));
                 launchMain(); shell("settings put secure enabled_accessibility_services ''"); SystemClock.sleep(500);
@@ -65,7 +72,10 @@ public final class DeviceChecks extends Instrumentation {
 
             stage = "Manual editor validation and persistence";
             runOnMainSync(() -> { activity.recreate(); }); SystemClock.sleep(800); launchMain();
-            scrollTo("＋ 手动添加步骤"); click("＋ 手动添加步骤"); setText("X 坐标（屏幕像素）", "100"); setText("Y 坐标（屏幕像素）", "900");
+            runOnMainSync(() -> {
+                try { java.lang.reflect.Method m = MainActivity.class.getDeclaredMethod("editStep", int.class); m.setAccessible(true); m.invoke(activity, -1); }
+                catch (ReflectiveOperationException e) { throw new AssertionError(e); }
+            }); setText("X 坐标（屏幕像素）", "100"); setText("Y 坐标（屏幕像素）", "900");
             setText("按住时长（1～10000 毫秒）", "0"); click("保存");
             require(store.load(screen).steps.isEmpty(), "Zero duration must not save");
             setText("按住时长（1～10000 毫秒）", "50"); click("保存");
@@ -79,14 +89,14 @@ public final class DeviceChecks extends Instrumentation {
             scrollTo("上移"); require(!requiredNode("上移").node.isEnabled(), "First step cannot move up");
             require(!requiredNode("下移").node.isEnabled(), "Last step cannot move down");
             require("org.hachile.tongjitap".equals(target.getPackageName()), "Formal package ID");
-            require("循济".equals(target.getApplicationInfo().loadLabel(target.getPackageManager()).toString()), "Formal application label");
+            require(target.getString(R.string.app_name).equals(target.getApplicationInfo().loadLabel(target.getPackageManager()).toString()), "Localized formal application label");
             screenshot("06-disabled-buttons"); pass();
 
             stage = "Service connection and screen picking";
             store.save(new Store.Draft(screen)); launchMain();
             shell("settings put secure enabled_accessibility_services org.hachile.tongjitap/.TapService");
             shell("settings put secure accessibility_enabled 1"); await(() -> TapService.alive() != null, 8000);
-            click("打开悬浮控制面板"); click("了解并打开面板");
+            click("打开悬浮控制面板"); click("了解并打开面板"); runOnMainSync(() -> TapService.alive().showSelectionPanel());
             fixture(true); Rect a = requiredNode("目标 A").bounds, b = requiredNode("目标 B").bounds;
             click("取点"); screenshot("03-picker"); tap(a.centerX(), a.centerY());
             await(() -> store.load(ScreenInfo.read(target)).steps.size() == 1, 3000);
@@ -184,7 +194,7 @@ public final class DeviceChecks extends Instrumentation {
             screenshot("07-color-unavailable"); pass(); return;
         }
         stage = "Color point picking does not insert normal steps";
-        store.save(new Store.Draft(screen)); launchMain(); click("打开悬浮控制面板"); fixture(true);
+        store.save(new Store.Draft(screen)); launchMain(); runOnMainSync(() -> TapService.alive().showSelectionPanel()); fixture(true);
         click("检测点"); tap(screen.width - 40, screen.height / 2);
         Store.Draft picked = store.load(screen);
         require(picked.steps.isEmpty() && picked.colorRule.x == screen.width - 40 && !picked.colorRule.enabled, "Detector point saved without enabling or extra steps");
@@ -239,9 +249,99 @@ public final class DeviceChecks extends Instrumentation {
         d.colorRule = new ColorRule(true, screen.width - 40, screen.height / 2, 0xFFFFFF, 0, 2, 500, back, recovery.centerX(), recovery.centerY());
         return d;
     }
+    private void runFormalChecks() throws Exception {
+        target.getSharedPreferences("app", 0).edit().clear().commit();
+        target.getSharedPreferences("tongjitap", 0).edit().clear().commit();
+        stage = "First launch consent and complete tutorial"; launchMain();
+        require(!requiredNode("同意并进入").node.isEnabled(), "Consent starts disabled");
+        scrollTo("我已阅读并理解功能、权限和风险说明");
+        for (int i = 0; i < 12 && node("我已阅读并理解功能、权限和风险说明") == null; i++) swipe(540, 1450, 540, 450);
+        click("我已阅读并理解功能、权限和风险说明"); click("同意并进入");
+        require(node("欢迎使用循济") != null, "Consent leads into tutorial"); screenshot("v1-01-tutorial");
+        for (int i = 0; i < 5; i++) {
+            waitForIdleSync(); SystemClock.sleep(400);
+            final Rect next = new Rect();
+            runOnMainSync(() -> {
+                View button = findTextView(activity.getWindow().getDecorView(), "下一步");
+                require(button != null, "Tutorial next is visible"); button.getGlobalVisibleRect(next);
+            });
+            tap(next.centerX(), next.centerY());
+        }
+        automation.setServiceInfo(automation.getServiceInfo());
+        requiredNode("QQ 交流群：934139029");
+        click("开始使用"); require(new AppPreferences(target).tutorialDone(), "Tutorial completed persistently"); pass();
+        target.getSharedPreferences("app", 0).edit().putBoolean("starShown", true).commit();
+
+        stage = "Four tabs, music and collapsed changelog";
+        click("随步"); require(node("调速设置") != null, "Embedded Stride settings"); screenshot("v1-02-stride");
+        click("跃点"); require(node("截图校准") != null, "Relay calibration exists"); screenshot("v1-03-relay");
+        click("更多"); require(node("展开完整更新日志") != null, "Changelog collapsed initially");
+        click("展开完整更新日志"); require(node("收起更新日志") != null, "Changelog expanded");
+        click("收起更新日志"); screenshot("v1-04-more"); pass();
+
+        stage = "Four catalogs and dark theme persisted without counting recreation";
+        int launches = target.getSharedPreferences("app", 0).getInt("launches", 0);
+        for (String lang : new String[]{"en", "ja", "de", "zh"}) {
+            new AppPreferences(target).language(lang); new AppPreferences(target).theme("dark"); launchMain();
+            runOnMainSync(() -> { require(Ui.dark, "Dark palette applied"); require(L.language.equals(lang), "Locale applied: " + lang); });
+            screenshot("v1-language-" + lang);
+        }
+        new AppPreferences(target).theme("light"); launchMain(); pass();
+
+        stage = "Fifth launch prompt exactly once, after tutorial";
+        target.getSharedPreferences("app", 0).edit().putInt("launches", 4).putBoolean("starShown", false).commit(); launchMain();
+        require(node("喜欢循济的话，给个 Star 吧") != null, "Fifth launch prompts"); click("下次再说");
+        launchMain(); require(node("喜欢循济的话，给个 Star 吧") == null, "Prompt is not repeated"); pass();
+
+        stage = "Default controls hide picking until explicit overlay selection";
+        store.markRunNotice();
+        shell("settings put secure enabled_accessibility_services org.hachile.tongjitap/.TapService");
+        shell("settings put secure accessibility_enabled 1"); await(() -> TapService.alive() != null, 8000);
+        runOnMainSync(() -> TapService.alive().showPanel()); SystemClock.sleep(400);
+        require(node("取点") == null && node("检测点") == null && node("动作点") == null, "Default panel has no pick buttons");
+        runOnMainSync(() -> TapService.alive().showSelectionPanel()); SystemClock.sleep(400);
+        require(node("取点") != null, "Explicit mode shows pick buttons"); click("关闭"); pass();
+
+        if (Build.VERSION.SDK_INT >= 30) {
+            stage = "Bundled on-device distance OCR";
+            java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+            final Integer[] meters = {null}; final Throwable[] error = {null};
+            runOnMainSync(() -> {
+                Bitmap image = Bitmap.createBitmap(600, 160, Bitmap.Config.ARGB_8888); Canvas canvas = new Canvas(image); canvas.drawColor(Color.WHITE);
+                Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG); paint.setColor(Color.BLACK); paint.setTextSize(80); canvas.drawText("0.12 km", 20, 110, paint);
+                com.google.mlkit.vision.text.TextRecognizer recognizer = com.google.mlkit.vision.text.TextRecognition.getClient(com.google.mlkit.vision.text.latin.TextRecognizerOptions.DEFAULT_OPTIONS);
+                recognizer.process(com.google.mlkit.vision.common.InputImage.fromBitmap(image, 0))
+                    .addOnSuccessListener(text -> meters[0] = RelayGate.parseMeters(text.getText()))
+                    .addOnFailureListener(e -> error[0] = e)
+                    .addOnCompleteListener(task -> { image.recycle(); recognizer.close(); latch.countDown(); });
+            });
+            require(latch.await(30, java.util.concurrent.TimeUnit.SECONDS), "OCR completes without model download");
+            require(error[0] == null && Integer.valueOf(120).equals(meters[0]), "OCR produces actual 120 meters: " + meters[0] + " / " + error[0]); pass();
+        }
+        runPresentationChecks();
+        stage = "Launch count persists but explicit recreation is not another launch";
+        int before = target.getSharedPreferences("app", 0).getInt("launches", 0);
+        runOnMainSync(() -> activity.recreate()); SystemClock.sleep(600);
+        require(target.getSharedPreferences("app", 0).getInt("launches", 0) == before, "Recreation does not increment launch count"); pass();
+        stage = "Screenshot-first click steps on every supported Android version";
+        ScreenInfo screen=ScreenInfo.read(target); store.save(new Store.Draft(screen));
+        importFixture("full",screen,ScreenshotImport.STEP); selectPixel(screen,270,960); click("保存");
+        ClickStep step=store.load(screen).steps.get(0);
+        require(Math.abs(step.x-270)<=2&&Math.abs(step.y-960)<=2,"Imported point retains full-screen coordinates"); pass();
+        if(Build.VERSION.SDK_INT>=30){
+            stage="Screenshot map, distance and Wi-Fi calibration";
+            for(int mode:new int[]{ScreenshotImport.MAP,ScreenshotImport.DISTANCE}){
+                importFixture("full",screen,mode); selectPixel(screen,20,mode==ScreenshotImport.MAP?900:1600); click("确认左上角");
+                selectPixel(screen,screen.width-30,mode==ScreenshotImport.MAP?1500:1750); screenshot("v1-region-preview"); click("保存区域");
+            }
+            importFixture("full",screen,ScreenshotImport.WIFI); selectPixel(screen,290,604); click("保存");
+            RelayConfig config=new RelayConfig(target); require(config.ready(screen),"Three screenshot selections form a valid calibration");
+            require(Math.abs(config.map.left-20)<=2&&Math.abs(config.distance.top-1600)<=2&&Math.abs(config.wifiX-290)<=2,"Calibrated coordinates match image"); pass();
+        }
+    }
     private void runPresentationChecks() throws Exception {
         stage = "QQ clipboard and bottom project link";
-        launchMain(); scrollTo("QQ交流群号：934139029"); click("QQ交流群号：934139029");
+        launchMain(); click("更多"); scrollTo("QQ 交流群：934139029"); click("QQ 交流群：934139029");
         runOnMainSync(() -> {
             ClipboardManager clipboard = activity.getSystemService(ClipboardManager.class);
             require(clipboard.hasPrimaryClip() && "934139029".contentEquals(clipboard.getPrimaryClip().getItemAt(0).getText()), "Exact QQ group copied");
@@ -284,6 +384,11 @@ public final class DeviceChecks extends Instrumentation {
         }
         if (view instanceof ViewGroup) for (int i = 0; i < ((ViewGroup) view).getChildCount(); i++) checkTypography(((ViewGroup) view).getChildAt(i));
     }
+    private View findTextView(View view, String text) {
+        if(view instanceof android.widget.TextView && text.contentEquals(((android.widget.TextView)view).getText())) return view;
+        if(view instanceof ViewGroup)for(int i=0;i<((ViewGroup)view).getChildCount();i++){View found=findTextView(((ViewGroup)view).getChildAt(i),text);if(found!=null)return found;}
+        return null;
+    }
     private Bitmap drawIcon(android.graphics.drawable.Drawable icon) {
         Bitmap bitmap = Bitmap.createBitmap(216, 216, Bitmap.Config.ARGB_8888);
         icon.setBounds(0, 0, 216, 216); icon.draw(new Canvas(bitmap)); return bitmap;
@@ -301,8 +406,8 @@ public final class DeviceChecks extends Instrumentation {
         Store.Draft draft = new Store.Draft(screen); draft.loops = 1;
         draft.steps.add(new ClickStep(a.centerX(), a.centerY(), 50, 5000));
         draft.steps.add(new ClickStep(b.centerX(), b.centerY(), 50, 0)); store.save(draft); launchMain();
-        importFixture("full", screen); require(!requiredNode("使用并开启").node.isEnabled(), "Selection required before confirmation");
-        selectPixel(screen, screen.width - 40, screen.height / 2); screenshot("17-screenshot-picker"); click("使用并开启");
+        importFixture("full", screen); require(!requiredNode("保存").node.isEnabled(), "Selection required before confirmation");
+        selectPixel(screen, screen.width - 40, screen.height / 2); screenshot("17-screenshot-picker"); click("保存");
         ColorRule picked = store.load(screen).colorRule;
         require(picked.enabled && picked.back && picked.rgb == 0xFFFFFF, "Imported white enables default Back action");
         require(Math.abs(picked.x - (screen.width - 40)) < 4 && Math.abs(picked.y - screen.height / 2) < 4,
@@ -316,7 +421,7 @@ public final class DeviceChecks extends Instrumentation {
 
         stage = "Image selection preserves custom settings and cancellation preserves saved rule";
         draft = store.load(screen); draft.colorRule = new ColorRule(false, 20, 30, 0x123456, 8, 3, 700, false, 100, 900); store.save(draft); launchMain();
-        importFixture("full", screen); selectPixel(screen, screen.width / 4, screen.height / 2); click("使用并开启");
+        importFixture("full", screen); selectPixel(screen, screen.width / 4, screen.height / 2); click("保存");
         ColorRule preserved = store.load(screen).colorRule;
         require(preserved.enabled && preserved.rgb == 0x12AB34 && preserved.tolerance == 8 && preserved.confirmations == 3
                 && preserved.intervalMs == 700 && !preserved.back && preserved.tapX == 100 && preserved.tapY == 900, "Custom action and sampling settings preserved");
@@ -328,14 +433,17 @@ public final class DeviceChecks extends Instrumentation {
         stage = "Cropped, corrupt and transparent images cannot save invalid rules";
         for (String kind : new String[]{"cropped", "broken"}) {
             importFixture(kind, screen); await(() -> node("正在读取截图") == null, 5000); SystemClock.sleep(300);
-            require(node("使用并开启") == null, "Invalid image must not open pixel selection: " + kind);
+            require(node("保存") == null, "Invalid image must not open pixel selection: " + kind);
             require(before.equals(target.getSharedPreferences("tongjitap", 0).getString("draft", "")), "Bad image cannot alter config");
         }
         importFixture("transparent", screen); selectPixel(screen, screen.width / 2, screen.height / 2);
-        require(!requiredNode("使用并开启").node.isEnabled(), "Transparent pixel is not a screen color"); click("取消");
+        require(!requiredNode("保存").node.isEnabled(), "Transparent pixel is not a screen color"); click("取消");
         store.save(new Store.Draft(screen)); launchMain(); pass();
     }
     private void importFixture(String kind, ScreenInfo screen) throws Exception {
+        importFixture(kind,screen,ScreenshotImport.COLOR);
+    }
+    private void importFixture(String kind, ScreenInfo screen, int mode) throws Exception {
         // Intercept only the system picker result; exercise the real cross-process content URI, decoder, view and save flow.
         android.net.Uri uri = android.net.Uri.parse("content://org.hachile.tongjitap.fixture.screenshots/"
                 + kind + "?width=" + screen.width + "&height=" + screen.height);
@@ -350,15 +458,38 @@ public final class DeviceChecks extends Instrumentation {
             }
         };
         addMonitor(monitor);
-        try { scrollTo("从截图选点取色"); click("从截图选点取色"); click("选择截图"); }
+        try {
+            if(mode==ScreenshotImport.COLOR){scrollTo("从截图选点取色"); click("从截图选点取色");}
+            else runOnMainSync(() -> {
+                try { java.lang.reflect.Field f=MainActivity.class.getDeclaredField("screenshotImport"); f.setAccessible(true); ((ScreenshotImport)f.get(activity)).open(mode); }
+                catch(ReflectiveOperationException e){throw new AssertionError(e);}
+            });
+            click("选择截图");
+        }
         finally { removeMonitor(monitor); }
-        if (!"cropped".equals(kind) && !"broken".equals(kind)) requiredNode("使用并开启");
+        if (!"cropped".equals(kind) && !"broken".equals(kind)) requiredNode(mode==ScreenshotImport.MAP||mode==ScreenshotImport.DISTANCE?"确认左上角":"保存");
     }
     private void selectPixel(ScreenInfo screen, int x, int y) {
         waitForIdleSync(); SystemClock.sleep(500); // Let the full-height dialog's opening animation settle.
-        Rect preview = requiredNode("截图选点区域，点按或拖动选择检测位置").bounds;
-        float scale = Math.min((float) preview.width() / screen.width, (float) preview.height() / screen.height);
-        tap(Math.round(preview.centerX() + (x - screen.width / 2f) * scale), Math.round(preview.centerY() + (y - screen.height / 2f) * scale));
+        final int[] point=new int[2];
+        runOnMainSync(() -> {
+            try {
+                java.lang.reflect.Field field=MainActivity.class.getDeclaredField("screenshotImport");field.setAccessible(true);
+                Object importer=field.get(activity);field=ScreenshotImport.class.getDeclaredField("dialog");field.setAccessible(true);
+                AlertDialog dialog=(AlertDialog)field.get(importer);
+                View preview=findViewType(dialog.getWindow().getDecorView(),ScreenshotPickerView.class);
+                int[] location=new int[2];preview.getLocationOnScreen(location);
+                ScreenshotSelection geometry=new ScreenshotSelection(screen.width,screen.height,preview.getWidth(),preview.getHeight());
+                point[0]=Math.round(location[0]+geometry.left+(x+.5f)*geometry.scale);
+                point[1]=Math.round(location[1]+geometry.top+(y+.5f)*geometry.scale);
+            }catch(ReflectiveOperationException e){throw new AssertionError(e);}
+        });
+        tap(point[0],point[1]);
+    }
+    private View findViewType(View view, Class<?> type) {
+        if(type.isInstance(view))return view;
+        if(view instanceof ViewGroup)for(int i=0;i<((ViewGroup)view).getChildCount();i++){View found=findViewType(((ViewGroup)view).getChildAt(i),type);if(found!=null)return found;}
+        return null;
     }
     private void saveBitmap(String name, Bitmap bitmap) throws IOException {
         File folder = new File(target.getFilesDir(), "checks"); if (!folder.exists() && !folder.mkdirs()) throw new IOException("mkdir");
@@ -411,7 +542,7 @@ public final class DeviceChecks extends Instrumentation {
     private Found requiredNode(String text) { await(() -> node(text) != null, 5000); return new Found(node(text)); }
     private void scrollTo(String text) {
         for (int i = 0; i < 6 && node(text) == null; i++) {
-            Rect s = bounds(); swipe(s.centerX(), s.bottom - 300, s.centerX(), s.top + 350);
+            Rect s = bounds(); swipe(s.centerX(), s.bottom - 560, s.centerX(), s.top + 350);
         }
     }
     private void click(String text) {

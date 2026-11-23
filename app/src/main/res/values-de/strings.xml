@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">TongjiTap</string>
+    <string name="service_description">Führt konfigurierte Taps, Zurück und Farbauslöser aus. Relay liest Marker und Distanz vom Bildschirm und bedient den WLAN-Schalter in den Schnelleinstellungen. Screenshots werden ohne Speicherung oder Upload im Arbeitsspeicher verarbeitet. Netzwerkwechsel können mobile Daten verbrauchen. Nach Verständnis selbst aktivieren und starten; jederzeit hier deaktivierbar. Musik benötigt diese Berechtigung nicht.</string>
+    <string name="service_summary">Tippfolgen, Farberkennung und konfigurierte Netzwerkwechsel</string>
+</resources>

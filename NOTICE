@@ -3,3 +3,9 @@ Copyright 2026 GPDdev
 
 Original project source is licensed under the Apache License, Version 2.0.
 Bundled third-party components retain their own copyright and license notices.
+
+Stride functionality incorporates GPDdev's StrideTune source, adapted for TongjiTap:
+https://github.com/GPDdev/StrideTune
+Upstream revision: d3b357f49113309c9c67c89ee3ec499fe86b2768
+Integration changes: shared navigation, themes, localization, lifecycle and application identity.
+See THIRD_PARTY_NOTICES.md for runtime dependency notices.

@@ -15,9 +15,14 @@ import java.nio.charset.StandardCharsets;
 public final class TestActivity extends Activity {
     private FrameLayout page, blocker;
     private boolean stayWhite;
+    private RelayView relayView;
     private android.window.OnBackInvokedCallback backCallback;
     @Override public void onCreate(Bundle state) { super.onCreate(state); build(); }
-    @Override public void onNewIntent(Intent intent) { super.onNewIntent(intent); setIntent(intent); build(); }
+    @Override public void onNewIntent(Intent intent) {
+        super.onNewIntent(intent); setIntent(intent);
+        if ("org.hachile.tongjitap.fixture.RELAY_JUMP".equals(intent.getAction()) && relayView!=null) { relayView.phase=1; relayView.invalidate(); return; }
+        build();
+    }
     private void build() {
         if (android.os.Build.VERSION.SDK_INT >= 33 && backCallback != null) {
             getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback); backCallback = null;
@@ -32,6 +37,8 @@ public final class TestActivity extends Activity {
         }
         page = new FrameLayout(this); page.setBackgroundColor(Color.rgb(245, 247, 251)); setContentView(page);
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
+        relayView=null;
+        if (action.endsWith(".RELAY")) { relayView=new RelayView(); page.addView(relayView, new FrameLayout.LayoutParams(-1, -1)); return; }
         TextView title = new TextView(this); title.setText("独立触摸测试页面\nA 测试短按，B 测试长按\n记录真实触摸事件，不连接第三方应用");
         title.setTextSize(18); title.setTextColor(Color.rgb(21, 32, 53)); title.setGravity(Gravity.CENTER);
         FrameLayout.LayoutParams heading = new FrameLayout.LayoutParams(-1, 240, Gravity.TOP); heading.topMargin = 80;
@@ -58,6 +65,28 @@ public final class TestActivity extends Activity {
     private void recover(String action) {
         record("RECOVERY", action, SystemClock.uptimeMillis());
         if (!stayWhite && blocker != null) { page.removeView(blocker); blocker = null; }
+    }
+    /** Deterministic map fixture, reacting to the actual emulator Wi-Fi state. */
+    private final class RelayView extends View {
+        private final android.graphics.Paint paint = new android.graphics.Paint(3);
+        private int phase;
+        RelayView() { super(TestActivity.this); setContentDescription("Relay fixture"); }
+        @Override protected void onDraw(android.graphics.Canvas canvas) {
+            boolean wifi = getApplicationContext().getSystemService(android.net.wifi.WifiManager.class).isWifiEnabled();
+            if (phase == 1 && !wifi) phase = 2;
+            if (phase == 2 && wifi) phase = 3;
+            int[] offset = new int[2]; getLocationOnScreen(offset);
+            int h = getWindowManager().getCurrentWindowMetrics().getBounds().height();
+            canvas.save(); canvas.translate(-offset[0], -offset[1]); canvas.drawColor(Color.WHITE);
+            paint.setColor(0xffefebe0); canvas.drawRect(20, 900, getWidth() - 20, h - 360, paint);
+            float x = getWidth() * (phase % 2 == 0 ? .25f : .75f), y = (900 + h - 360) / 2f;
+            paint.setColor(0xffcbe9c1); canvas.drawCircle(x, y, 38, paint);
+            paint.setColor(Color.WHITE); canvas.drawCircle(x, y, 22, paint);
+            paint.setColor(0xff09cb24); canvas.drawCircle(x, y, 18, paint);
+            paint.setColor(Color.BLACK); paint.setTextSize(76);
+            canvas.drawText(String.format(java.util.Locale.ROOT, "%.2f km", .10 + phase * .05), 60, h - 180, paint);
+            canvas.restore(); postInvalidateDelayed(150);
+        }
     }
     @SuppressWarnings("deprecation")
     @Override public void onBackPressed() { if (blocker != null) recover("back"); else super.onBackPressed(); }

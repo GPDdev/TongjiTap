@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">TongjiTap</string>
+    <string name="service_description">設定したタップ、戻る、色の検出を実行します。Relayは画面上のマークと距離を読み、クイック設定のWi-Fiを操作します。画像はメモリ内で処理し、保存・送信しません。ネットワーク切り替えで通信量が発生する場合があります。理解した上で有効にして開始してください。いつでも解除できます。音楽には不要です。</string>
+    <string name="service_summary">タップ手順、色の検出と設定したネットワーク切り替え</string>
+</resources>

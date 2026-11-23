@@ -15,10 +15,11 @@ final class ScreenshotPickerView extends View {
     private final Rect loupeSource = new Rect();
     private ScreenshotSelection geometry;
     private int selectedX = -1, selectedY = -1;
+    private int anchorX = -1, anchorY = -1;
 
     ScreenshotPickerView(Context context, Bitmap bitmap, Listener listener) {
         super(context); this.bitmap = bitmap; this.listener = listener;
-        setContentDescription("截图选点区域，点按或拖动选择检测位置");
+        setContentDescription(L.t("截图选点区域，点按或拖动选择检测位置"));
         setClickable(true); setFocusable(true);
         setBackgroundColor(Color.rgb(229, 232, 237));
     }
@@ -38,6 +39,13 @@ final class ScreenshotPickerView extends View {
         canvas.drawBitmap(bitmap, null, imageBounds, paint);
         if (selectedX < 0) return;
         float x = g.left + (selectedX + .5f) * g.scale, y = g.top + (selectedY + .5f) * g.scale;
+        if (anchorX >= 0) {
+            float ax = g.left + anchorX * g.scale, ay = g.top + anchorY * g.scale;
+            paint.setColor(0x332563eb); canvas.drawRect(Math.min(ax,x),Math.min(ay,y),Math.max(ax,x),Math.max(ay,y),paint);
+            paint.setColor(Ui.BLUE); paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(Ui.dp(getContext(),2));
+            canvas.drawRect(Math.min(ax,x),Math.min(ay,y),Math.max(ax,x),Math.max(ay,y),paint); paint.setStyle(Paint.Style.FILL);
+            crosshair(canvas,ax,ay);
+        }
         crosshair(canvas, x, y);
         // An unfiltered loupe makes neighboring pixels visible even on a small preview.
         int radius = 14, size = Ui.dp(getContext(), 96), margin = Ui.dp(getContext(), 8);
@@ -75,6 +83,7 @@ final class ScreenshotPickerView extends View {
         return true;
     }
     @Override public boolean performClick() { super.performClick(); return true; }
+    void regionAnchor(int x, int y) { anchorX=x; anchorY=y; invalidate(); }
     // Drop the reference after the window detaches. The renderer may still hold the bitmap briefly.
     void release() { bitmap = null; }
 }

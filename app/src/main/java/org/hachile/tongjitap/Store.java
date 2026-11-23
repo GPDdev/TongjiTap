@@ -8,7 +8,7 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 
 final class Store {
-    static final int NOTICE_VERSION = 2;
+    static final int NOTICE_VERSION = 3;
     static final class Draft {
         int loops = 10, width, height, rotation;
         final ArrayList<ClickStep> steps = new ArrayList<>();

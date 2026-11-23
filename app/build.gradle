@@ -11,11 +11,12 @@ android {
         applicationId 'org.hachile.tongjitap'
         minSdk 26
         targetSdk 36
-        versionCode 3
-        versionName '0.2.1'
+        versionCode 4
+        versionName '1.0.0'
         testInstrumentationRunner 'org.hachile.tongjitap.DeviceChecks'
     }
     buildFeatures { buildConfig true }
+    bundle { language { enableSplit = false } }
     signingConfigs {
         release {
             if (signingFile.exists()) {
@@ -35,4 +36,9 @@ android {
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
     lint { abortOnError true; checkReleaseBuilds true }
 }
-dependencies { testImplementation 'junit:junit:4.13.2' }
+dependencies {
+    implementation 'androidx.media3:media3-exoplayer:1.8.0'
+    implementation 'androidx.media3:media3-session:1.8.0'
+    implementation 'com.google.mlkit:text-recognition:16.0.1'
+    testImplementation 'junit:junit:4.13.2'
+}

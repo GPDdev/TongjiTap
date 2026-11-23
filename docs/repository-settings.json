@@ -1,24 +1,29 @@
 {
   "repository": "GPDdev/TongjiTap",
-  "description": "循济 TongjiTap — an offline Android tap assistant with customizable sequences, screenshot color picking, color triggers, and floating controls. Unofficial personal project.",
+  "description": "循济 TongjiTap — Android tap sequences, screenshot color triggers, Stride music speed control, and calibrated screen-based Wi-Fi switching. Unofficial personal project.",
   "homepage": "",
   "topics": [
     "android",
     "java",
     "accessibility-service",
-    "auto-clicker",
     "tap-automation",
-    "offline",
     "android-app",
     "tongji",
     "tongjitap",
     "color-detection",
-    "color-picker"
+    "music-player",
+    "media3",
+    "ocr",
+    "wifi",
+    "multilingual"
   ],
   "license": "Apache-2.0",
   "default_branch": "main",
-  "release_tag": "v0.2.1",
-  "release_title": "循济 TongjiTap v0.2.1",
-  "readme_languages": ["zh", "en"],
+  "release_tag": "v1.0.0",
+  "release_title": "循济 TongjiTap v1.0.0",
+  "readme_languages": [
+    "zh",
+    "en"
+  ],
   "readme_default": "zh"
 }

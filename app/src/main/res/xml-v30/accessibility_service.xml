@@ -3,9 +3,10 @@
     android:description="@string/service_description"
     android:summary="@string/service_summary"
     android:settingsActivity="org.hachile.tongjitap.MainActivity"
-    android:accessibilityEventTypes="typeWindowStateChanged"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagRetrieveInteractiveWindows"
     android:notificationTimeout="100"
     android:canPerformGestures="true"
     android:canTakeScreenshot="true"
-    android:canRetrieveWindowContent="false" />
+    android:canRetrieveWindowContent="true" />

@@ -1,24 +1,24 @@
-# 已完成：循济 TongjiTap 0.2.1 本地开发
+# 已完成：循济 TongjiTap 1.0.0 本地开发
 
 ## 1. 当前目标
-应用与文档的本地开发已完成：修正桌面图标缩放，统一中文字号，增加 QQ 群号 934139029 点击复制、底部 Powered by GPDdev 项目链接及本机截图选点取色。iOS 继续暂缓。GitHub 地址为 https://github.com/GPDdev/TongjiTap；最终远程发布核验记录在本机 handoffs/2026-11-23-tongjitap-0.2.1.md，公开安装包以 Releases 为准。
+正式版 1.0.0 本地开发和必要验证已完成。四栏为循济 Loop、随步 Stride、跃点 Relay、更多 More；包含启动界面、音乐整合、双条件网络切换、截图默认选点、四语言与主题、首次教程、第五次启动 Star 提醒。项目地址 https://github.com/GPDdev/TongjiTap。远程发行状态以 Releases 和本机 handoffs/2026-11-23-tongjitap-1.0.0.md 为准。iOS 暂缓，原图标继续使用。
 
 ## 2. 完成条件
-23 项核心测试、Android 8 的 15 项和 Android 16 的 24 项设备场景通过；Lint 无问题；正式 APK 签名、对齐和双系统冷安装通过。已用正式包验证 0.2.0 覆盖升级保留设置，以及真实系统文件选择器导入截图、选取原图坐标与 RGB 后保存。Apache-2.0 保留。证据见 VALIDATION.md。
+38 项单元测试、Android 8 的 27 项和 Android 16 的 41 项设备场景通过；Lint 0 错误、0 警告。正式包签名及 16 KB 对齐检查通过，Android 8 冷安装和 Android 16 从 0.2.1 覆盖升级通过，循环次数保留。中英文 README、日志、版权声明、版本及仓库属性配置同步。详细证据与局限见 VALIDATION.md。
 
 ## 3. 已确认事实
-应用 ID org.hachile.tongjitap 不变，versionName 0.2.1、versionCode 3，复用正式签名和配置格式。基础点击需要 Android 8+，颜色功能需要 Android 11+。导入只设置检测位置和目标颜色，运行时仍读取实时屏幕像素；图片本机处理，不保存副本、不上传，没有新增网络或存储权限。只有匹配当前完整屏幕尺寸的图片可以导入，保存时重新检查屏幕和运行状态。
+应用 ID org.hachile.tongjitap，versionName 1.0.0、versionCode 4，复用已有正式签名。后续未另行指定时递增为 1.0.1，并增加 versionCode。Android 8 支持基础点击、截图步骤和音乐；实时颜色与跃点需要 Android 11。跃点要求绿点大幅移动且里程严格增加超过 20 米，再确认一帧；操作系统快捷面板后验证实际 Wi-Fi 状态。测试夹具已完成关、开两次联动，未验证真实校园网或微信运行页面。
 
 ## 4. 相关文件与命令
-MainActivity.java 与 Ui.java 管理主界面、群号、链接和字号；ScreenshotImport.java、ScreenshotPickerView.java、ScreenshotSelection.java 管理系统选图、解码、预览和坐标映射；ic_foreground.xml 修正自适应前景比例。AGENTS.md 记录默认只递增版本末位的规则。开发分支 codex/tongjitap-0.2.1，发布分支 main，版本标签 v0.2.1。
+MainActivity、Ui、AppPreferences、L 和 assets/i18n 管理界面、四语言及主题；ScreenshotImport 和 ScreenshotPickerView 管理本机截图选点及区域；StridePage、PlaybackService 等整合 StrideTune；RelayMonitor、RelayGate、GreenDot、WifiPanel 管理绿点、OCR、条件确认与网络切换。
 
-scripts/test-core.ps1、scripts/check-device.py、scripts/build-release.ps1 和 scripts/smoke-release.py 为复现入口。正式包位于 dist/tongjitap-0.2.1.apk；设备证据位于 dist/checks。tools/release-ui-check-0.2.1.py 是本机升级与系统选图核验脚本，不随源码发布。README.md、README.en.md、docs/repository-settings.json 和 docs/release-notes-v0.2.1.md 已同步版本、群号与功能说明。
+scripts/test-core.ps1、scripts/check-device.py、scripts/build-release.ps1 和 scripts/smoke-release.py 为复现入口。正式包 dist/tongjitap-1.0.0.apk；证据在 dist/checks。发布资产使用稳定文件名 tongjitap.apk，使 README 的 releases/latest/download/tongjitap.apk 指向最新版。源码归档使用 Git archive，禁止打包工作目录。开发分支 codex/tongjitap-1.0.0，目标 main，标签 v1.0.0。
 
 ## 5. 已否决方案
-不按裁剪图或长截图猜测屏幕坐标；不把导入图片当作实时检测。不更换应用 ID 或正式签名，不改写历史提交和旧标签。不以普通 iOS App 宣称可以控制微信。全黑截图仍采取保守停止，不能据此识别所有受保护窗口。
+不调用普通应用不可用的 setWifiEnabled；不读取校园网密码。不按裁剪图猜测坐标，不以单独位置变化或单独里程增长切换网络。保留原 ID、签名和 Apache-2.0。StrideTune 的未发布许可证草稿未被当作授权，整合来自项目所有者的明确指令，来源在 NOTICE 中记录。
 
 ## 6. 风险与待确认项
-无本地开发待办。真实手机、微信、其他尺寸和厂商系统尚未实测。应选择两种页面颜色差异明显的位置，必要时调小容差。私下备份并复用 .signing 中的正式签名，禁止提交或共享密钥。SDK、dist、工具缓存和本机配置不进入 Git。
+无本地开发待办。真实手机、厂商系统、TJ-WIFI 和微信现场表现仍需用户设备验证；本轮未重新联网验证音乐平台接口。截图仅本机内存处理；在线音乐会联网，ML Kit 的使用与性能指标已披露。停止后 Wi-Fi 保持当时状态。不得提交 .signing、用户截图、SDK、缓存和本机配置。
 
 ## 7. 下一步动作
-无，本版本地开发已完成；后续需求另开版本，默认从 0.2.1 递增为 0.2.2。远程发布状态以本机发布交接文件和 GitHub Releases 为准。
+无，本版本地开发已完成；远程发行核验记录在本机版本交接文件。后续需求另开版本。

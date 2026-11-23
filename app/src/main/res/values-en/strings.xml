@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">TongjiTap</string>
+    <string name="service_description">Runs your configured taps, Back and color triggers. Relay reads a screen marker and distance and operates the Wi-Fi switch in Quick Settings. Screenshots are processed in memory without saving or uploading. Network changes may use mobile data. Enable and start only when you understand these capabilities; disable here at any time. Music does not need this permission.</string>
+    <string name="service_summary">Tap sequences, color detection and configured network switching</string>
+</resources>
