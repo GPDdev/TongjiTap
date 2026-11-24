@@ -9,7 +9,7 @@
 <p align="center"><a href="https://github.com/GPDdev/TongjiTap/releases/latest/download/tongjitap.apk"><img src="./docs/images/download-qr.png" width="225" height="225" alt="扫码下载最新版循济 Android APK"></a></p>
 <p align="center">安卓手机扫码下载最新版</p>
 
-点击和音乐功能支持 Android 8 及以上版本，颜色检测与跃点需要 Android 11 及以上版本。目前暂无 iOS 版本
+点击和音乐功能支持 Android 8 及以上版本，颜色检测与跃点需要 Android 11 及以上版本。目前暂无 iOS 版本 QAQ
 
 ## 使用说明
 
