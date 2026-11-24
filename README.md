@@ -1,6 +1,6 @@
 <p align="center"><img src="./docs/images/tongjitap-icon.svg" width="100" alt="循济图标"></p>
 <h1 align="center">循济 TongjiTap</h1>
-<p align="center">一款支持自动点击、音乐调速和 Wi-Fi 切换的 Android 应用。</p>
+<p align="center">为同济大学学生提供的一款支持自动点击、音乐调速和 Wi-Fi 切换的 Android 应用。</p>
 <p align="center"><s>这个作者朋友面善又友善，因此允许刷锻一次走两圈</s></p>
 
 <p align="center">🇨🇳 <a href="./README.md">简体中文</a> | 🇺🇸 <a href="./README.en.md">English</a></p>
