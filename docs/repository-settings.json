@@ -1,7 +1,7 @@
 {
   "repository": "GPDdev/TongjiTap",
   "description": "循济 TongjiTap — Android tap sequences, screenshot color triggers, Stride music speed control, and calibrated screen-based Wi-Fi switching. Unofficial personal project.",
-  "homepage": "",
+  "homepage": "https://tap.hachile.org/",
   "topics": [
     "android",
     "java",
@@ -19,8 +19,8 @@
   ],
   "license": "Apache-2.0",
   "default_branch": "main",
-  "release_tag": "v1.0.0",
-  "release_title": "循济 TongjiTap v1.0.0",
+  "release_tag": "v1.0.1",
+  "release_title": "循济 TongjiTap v1.0.1",
   "readme_languages": [
     "zh",
     "en",

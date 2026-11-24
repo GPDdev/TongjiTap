@@ -12,9 +12,9 @@
 
 ## 使用说明
 
-第一次打开会显示隐私政策和使用教程。以后想重看教程，在“更多”里就能找到。
+第一次打开，请下滑读完隐私政策再勾选同意。接着选择想学的功能，跟着高亮提示亲手练习选点、音乐调速或 Wi-Fi 校准。教程使用示例内容，不会改动你的实际配置；其他教程可以随时在“更多”的“新手教程”里查看。
 
-<table><tr><th>循济</th><th>随步</th><th>跃点</th><th>更多</th></tr><tr><td><img src="./docs/images/loop-1.0.0.png" width="220" alt="循济点击设置"></td><td><img src="./docs/images/stride-1.0.0.png" width="220" alt="随步调速播放器"></td><td><img src="./docs/images/relay-1.0.0.png" width="220" alt="跃点截图校准"></td><td><img src="./docs/images/more-1.0.0.png" width="220" alt="更多与个人设置"></td></tr></table>
+<table><tr><th>循济</th><th>随步</th><th>跃点</th><th>更多</th></tr><tr><td><img src="./docs/images/loop-1.0.1.png" width="220" alt="循济点击设置"></td><td><img src="./docs/images/stride-1.0.1.png" width="220" alt="随步调速播放器"></td><td><img src="./docs/images/relay-1.0.1.png" width="220" alt="跃点截图校准"></td><td><img src="./docs/images/more-1.0.1.png" width="220" alt="更多与个人设置"></td></tr></table>
 
 ### 循济 Loop
 
@@ -48,6 +48,8 @@
 
 查看版本和更新日志、重看教程，或切换中文、English、日本語、Deutsch。
 
+点“下载最新版”会在浏览器中下载 APK。“自动更新提醒”默认关闭；开启后，打开应用时会向 GitHub 检查新版本，有更新再提示你下载。
+
 ## 隐私与使用提醒
 
 应用没有广告。设置和曲库等数据保存在手机的应用数据中，截图只在本机内存中处理，不保存副本、不上传。自动操作需要你授权并手动开始。
@@ -74,7 +76,7 @@ python scripts/bootstrap.py
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1
 ```
 
-安装包输出到 `dist/tongjitap-1.0.0.apk`。应用源码在 `app/`，设备测试页面在 `fixture/`，构建脚本在 `scripts/`。检查方法见 [VALIDATION.md](./VALIDATION.md)，测试 APK 不包含在正式安装包内。
+安装包输出到 `dist/tongjitap-1.0.1.apk`。应用源码在 `app/`，设备测试页面在 `fixture/`，构建脚本在 `scripts/`。检查方法见 [VALIDATION.md](./VALIDATION.md)，测试 APK 不包含在正式安装包内。
 
 请勿提交 `.signing`、本机配置、SDK 或缓存。自行构建的签名与官方安装包不同，后续更新需要沿用同一签名。
 

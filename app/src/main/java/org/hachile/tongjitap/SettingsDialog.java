@@ -13,7 +13,7 @@ import java.util.Locale;
 
 @android.annotation.SuppressLint("UseSwitchCompatOrMaterialCode") // Deliberate platform controls within platform dialogs.
 final class SettingsDialog {
-    static void show(Context context, SpeedConfig c, java.util.function.Consumer<SpeedConfig> save) {
+    static AlertDialog show(Context context, SpeedConfig c, java.util.function.Consumer<SpeedConfig> save) {
         LinearLayout form = MusicUi.column(context);
         int pad = MusicUi.dp(context, 24); form.setPadding(pad, 0, pad, pad);
         TextView intro = MusicUi.text(context, L.t("按你的手感设置，保存后立即生效。"), 13, MusicUi.MUTED);
@@ -60,7 +60,7 @@ final class SettingsDialog {
                 }
             });
         });
-        dialog.show();
+        dialog.show(); return dialog;
     }
 
     private static EditText number(Context context, LinearLayout parent, String label, float value) {

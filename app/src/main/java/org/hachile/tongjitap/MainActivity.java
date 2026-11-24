@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 @androidx.annotation.OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)
-public final class MainActivity extends Activity {
+public final class MainActivity extends androidx.activity.ComponentActivity {
     static final String QQ_GROUP = "934139029";
     static final String PROJECT_URL = "https://github.com/GPDdev/TongjiTap";
     private Store store;
@@ -29,7 +29,14 @@ public final class MainActivity extends Activity {
     private ScreenshotImport screenshotImport;
     private AppPreferences preferences;
     private StridePage stride;
-    private int selectedTab, tutorialStep;
+    private int selectedTab;
+    private GuidedTutorial tutorial;
+    private UpdateChecker updater;
+    private boolean promptShowing, updatePresented;
+    private String pendingVersion;
+    private final androidx.activity.OnBackPressedCallback tutorialBack = new androidx.activity.OnBackPressedCallback(false) {
+        @Override public void handleOnBackPressed() { exitTutorial(); }
+    };
     private Bundle restoredState;
     private boolean resumed;
     private final ArrayList<Button> unavailableMoves = new ArrayList<>();
@@ -40,33 +47,38 @@ public final class MainActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         setTheme(R.style.AppTheme); super.onCreate(state); L.init(this); Ui.apply(this); store = new Store(this);
         preferences = new AppPreferences(this); restoredState = state;
+        getOnBackPressedDispatcher().addCallback(this, tutorialBack);
         if (state == null) preferences.launch();
         selectedTab = state == null ? getIntent().getIntExtra("tab", 0) : state.getInt("tab", 0);
         selectedTab = Math.max(0, Math.min(3, selectedTab));
         if (Intent.ACTION_SEND.equals(getIntent().getAction())) selectedTab = 1;
-        tutorialStep = state == null ? 0 : state.getInt("tutorial", 0);
+        updater = new UpdateChecker();
+        updatePresented = state != null && state.getBoolean("updatePresented");
+        if (state != null && state.getBoolean("guide.open")) renderTutorial();
         screenshotImport = new ScreenshotImport(this, store, this::editable, this::render, state);
         render();
     }
     @Override public void onResume() {
         super.onResume(); resumed = true; TapService.stateObserver = stateObserver; TapService.configObserver = configObserver;
-        render(); if (!store.accepted()) showConsent(); else maybeStar();
+        render(); if (!store.accepted()) showConsent(); else { checkForUpdate(); maybePrompts(); }
     }
     @Override public void onPause() {
         resumed = false;
+        if (tutorial != null) tutorial.pause();
         if (TapService.stateObserver == stateObserver) TapService.stateObserver = null;
         if (TapService.configObserver == configObserver) TapService.configObserver = null;
         super.onPause();
     }
     @Override public void onDestroy() {
-        screenshotImport.close(); if (stride != null) stride.onDestroy(); super.onDestroy();
+        screenshotImport.close(); if (tutorial != null) tutorial.close(); if (updater != null) updater.close(); if (stride != null) stride.onDestroy(); super.onDestroy();
     }
     @Override protected void onStop() { if (stride != null) stride.onStop(); super.onStop(); }
     @Override protected void onSaveInstanceState(Bundle state) {
-        super.onSaveInstanceState(state); screenshotImport.saveState(state); state.putInt("tab", selectedTab); state.putInt("tutorial", tutorialStep);
+        super.onSaveInstanceState(state); screenshotImport.saveState(state); state.putInt("tab", selectedTab); state.putBoolean("guide.open", tutorial != null); state.putBoolean("updatePresented", updatePresented);
+        if (tutorial != null) tutorial.save(state);
         if (stride != null) stride.onSaveInstanceState(state);
     }
-    @Override protected void onActivityResult(int request, int result, Intent data) {
+    @Override public void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
         screenshotImport.onResult(request, result, data);
         if (request == 100) { if (stride == null) stride = new StridePage(this, restoredState); stride.onActivityResult(request, result, data); }
@@ -78,8 +90,9 @@ public final class MainActivity extends Activity {
         return true;
     }
     private void render() {
+        tutorialBack.setEnabled(false);
         status = permission = null; editor = null; unavailableMoves.clear();
-        if (store.accepted() && !preferences.tutorialDone()) { renderTutorial(); return; }
+        if (store.accepted() && (!preferences.tutorialDone() || tutorial != null)) { renderTutorial(); return; }
         LinearLayout shell = Ui.column(this); shell.setBackgroundColor(Ui.BG);
         FrameLayout content = new FrameLayout(this); shell.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
         View separator = new View(this); separator.setBackgroundColor(Ui.LINE); shell.addView(separator, new LinearLayout.LayoutParams(-1, Ui.dp(this, 1)));
@@ -125,7 +138,7 @@ public final class MainActivity extends Activity {
         });
     }
     private void heading(LinearLayout page, String title, String english, String description) {
-        page.addView(Ui.title(this, title)); page.addView(Ui.text(this, english, Ui.BLUE)); Ui.gap(page, 10);
+        page.addView(Ui.title(this, title)); if (!L.language.equals("zh")) page.addView(Ui.text(this, english, Ui.BLUE)); Ui.gap(page, 10);
         page.addView(Ui.text(this, description, Ui.MUTED)); Ui.gap(page, 22);
     }
     private void loopPage(LinearLayout page) {
@@ -200,6 +213,15 @@ public final class MainActivity extends Activity {
         LinearLayout about = Ui.card(this); about.addView(Ui.heading(this, L.t("循济 / TongjiTap"))); about.addView(Ui.text(this, L.t("当前版本 ") + BuildConfig.VERSION_NAME, Ui.MUTED));
         TextView history = Ui.text(this, ChangeLog.TEXT, Ui.INK); history.setVisibility(View.GONE); history.setTextIsSelectable(true);
         Button expand = Ui.button(this, L.t("展开完整更新日志"), false, v -> { boolean show = history.getVisibility() != View.VISIBLE; history.setVisibility(show ? View.VISIBLE : View.GONE); ((Button) v).setText(show ? L.t("收起更新日志") : L.t("展开完整更新日志")); }); about.addView(expand); about.addView(history); page.addView(about);
+        LinearLayout updates = Ui.card(this); updates.addView(Ui.heading(this, L.t("应用更新")));
+        updates.addView(Ui.button(this, L.t("下载最新版"), true, v -> openUrl(UpdateChecker.DOWNLOAD)));
+        CheckBox reminder = new CheckBox(this); reminder.setText(L.t("自动更新提醒")); reminder.setTextSize(Ui.BODY_SP);
+        reminder.setMinHeight(Ui.dp(this, 48)); reminder.setTextColor(Ui.INK); reminder.setChecked(preferences.updateReminder());
+        reminder.setOnCheckedChangeListener((button, checked) -> {
+            preferences.updateReminder(checked); pendingVersion = null; updatePresented = false; updater.reset();
+            if (checked) checkForUpdate();
+        }); updates.addView(reminder);
+        updates.addView(Ui.text(this, L.t("开启后，打开应用时向 GitHub 检查新版本；有更新才提醒，不会自动下载安装。"), Ui.MUTED)); page.addView(updates);
         LinearLayout preferencesCard = Ui.card(this); preferencesCard.addView(Ui.heading(this, L.t("偏好设置")));
         preferencesCard.addView(Ui.button(this, L.t("语言 / Language"), false, v -> {
             if (!editable()) return;
@@ -209,7 +231,7 @@ public final class MainActivity extends Activity {
             if (!editable()) return;
             Ui.dialog(this, L.t("外观")).setItems(new String[]{L.t("白天模式"), L.t("黑夜模式")}, (d, i) -> { preferences.theme(i == 0 ? "light" : "dark"); recreate(); }).show();
         }));
-        preferencesCard.addView(Ui.button(this, L.t("重新查看教程"), false, v -> { tutorialStep = 0; renderTutorial(); }));
+        preferencesCard.addView(Ui.button(this, L.t("新手教程"), false, v -> { if (!editable()) return; restoredState = null; renderTutorial(); }));
         preferencesCard.addView(Ui.button(this, L.t("隐私政策与使用说明"), false, v -> fullNotice())); page.addView(preferencesCard);
         LinearLayout community = Ui.card(this); community.addView(Ui.heading(this, L.t("交流与反馈")));
         community.addView(Ui.button(this, L.t("QQ 交流群：") + QQ_GROUP, true, v -> copyGroup()));
@@ -222,34 +244,39 @@ public final class MainActivity extends Activity {
         page.addView(Ui.button(this, "Powered by GPDdev", false, v -> openUrl(PROJECT_URL)));
     }
     private void renderTutorial() {
-        String[] titles = {L.t("欢迎使用循济"), L.t("循济 / Loop"), L.t("随步 / Stride"), L.t("跃点 / Relay"), L.t("更多 / More"), L.t("一起完善循济")};
-        String[] descriptions = {
-            L.t("接下来用几步了解主要功能。设置保存在本机，辅助功能需要你主动授权。"),
-            L.t("导入目标页面截图，点选点击位置；设置顺序、按住时间、等待时间和循环次数。颜色触发可以返回或点击恢复位置。默认悬浮面板只有运行控制，选取悬浮窗选点后才显示取点按钮。"),
-            L.t("导入本地音频或网易云公开歌单。单指滑动调节倍速，可设置方向、灵敏度、倍速范围、锁定手势和变速不变调。支持后台播放与耳机控制。在线音乐可能消耗流量，也可能受平台限制。"),
-            L.t("先开启 Wi-Fi、移动数据，并设置 TJ-WIFI 自动连接。从截图框选地图、里程，再校准快捷面板的 Wi-Fi 按钮。绿点明显移动且里程单次增加超过 0.02 km 时，确认后切换网络。需要 Android 11；厂商面板和页面变化可能使操作失效。"),
-            L.t("查看完整更新日志，切换中文、英语、日语、德语与明暗主题。这里也有项目、开发者主页和其他应用入口。"),
-            L.t("遇到问题或有新想法，欢迎加入 QQ 交流群。点击下方群号即可复制。")};
-        LinearLayout root = Ui.column(this); root.setBackgroundColor(Ui.BG); FrameLayout body = new FrameLayout(this); root.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
-        ScrollView scroll = new ScrollView(this); LinearLayout page = form(); scroll.addView(page); body.addView(scroll);
-        Ui.gap(page, 32); ImageView logo = new ImageView(this); logo.setImageResource(R.drawable.ic_launcher); page.addView(logo, new LinearLayout.LayoutParams(Ui.dp(this, 80), Ui.dp(this, 80)));
-        Ui.gap(page, 28); page.addView(Ui.text(this, (tutorialStep + 1) + " / " + titles.length, Ui.BLUE)); Ui.gap(page, 12);
-        page.addView(Ui.title(this, titles[tutorialStep])); Ui.gap(page, 18); page.addView(Ui.text(this, descriptions[tutorialStep], Ui.INK));
-        if (tutorialStep == 5) page.addView(Ui.button(this, L.t("QQ 交流群：") + QQ_GROUP, true, v -> copyGroup()));
-        LinearLayout actions = form();
-        actions.addView(Ui.button(this, tutorialStep == 5 ? L.t("开始使用") : L.t("下一步"), true, v -> {
-            if (tutorialStep < 5) { tutorialStep++; renderTutorial(); }
-            else { preferences.finishTutorial(); selectedTab = 0; render(); maybeStar(); }
-        }));
-        if (tutorialStep > 0) actions.addView(Ui.button(this, L.t("上一步"), false, v -> { tutorialStep--; renderTutorial(); }));
-        root.addView(actions); installRoot(root, titles[tutorialStep]);
+        tutorialBack.setEnabled(true);
+        if (tutorial == null) tutorial = new GuidedTutorial(this, restoredState, tab -> {
+            tutorial.close(); tutorial = null; restoredState = null;
+            preferences.finishTutorial(); selectedTab = tab; render(); checkForUpdate(); maybePrompts();
+        }, this::copyGroup);
+        installRoot(tutorial.root, L.t("新手教程"));
+    }
+    private void checkForUpdate() {
+        if (!store.accepted() || !preferences.tutorialDone() || tutorial != null || !preferences.updateReminder()) return;
+        updater.check(version -> { if (preferences.updateReminder()) { pendingVersion = version; maybePrompts(); } });
+    }
+    private void maybePrompts() {
+        if (!resumed || isFinishing() || isDestroyed() || consentShowing || promptShowing || tutorial != null
+            || !store.accepted() || !preferences.tutorialDone() || busy()) return;
+        if (pendingVersion != null && preferences.updateReminder() && !updatePresented) {
+            String version = pendingVersion; pendingVersion = null; updatePresented = true; promptShowing = true;
+            AlertDialog prompt = Ui.dialog(this, L.t("发现新版本"))
+                .setMessage(L.t("可用版本：") + version + "\n" + L.t("点击下载后，将在浏览器中获取最新版安装包。"))
+                .setNegativeButton(L.t("稍后再说"), null)
+                .setPositiveButton(L.t("下载更新"), (d, w) -> openUrl(UpdateChecker.DOWNLOAD)).create();
+            prompt.setOnDismissListener(d -> promptShowing = false); prompt.show();
+        } else maybeStar();
+    }
+    private void exitTutorial() {
+        if (tutorial != null) { tutorial.close(); tutorial = null; restoredState = null; preferences.finishTutorial(); render(); checkForUpdate(); }
     }
     private void maybeStar() {
-        if (!store.accepted() || !preferences.tutorialDone() || !preferences.starDue() || isFinishing()) return;
-        preferences.starShown();
-        Ui.dialog(this, L.t("喜欢循济的话，给个 Star 吧"))
-            .setMessage(L.t("你已经打开循济 5 次了。如果它帮到了你，欢迎到 GitHub 点一颗 Star，支持继续开发。谢谢！"))
-            .setNegativeButton(L.t("下次再说"), null).setPositiveButton(L.t("前往 GitHub"), (d, w) -> openUrl(PROJECT_URL)).show();
+        if (tutorial != null || promptShowing || !store.accepted() || !preferences.tutorialDone() || !preferences.starDue() || isFinishing()) return;
+        preferences.starShown(); promptShowing = true;
+        AlertDialog star = Ui.dialog(this, L.t("喜欢循济的话，给个 Star 吧"))
+            .setMessage(L.t("如果循济帮到了你，欢迎到 GitHub 点一颗 Star，支持继续开发。谢谢！"))
+            .setNegativeButton(L.t("下次再说"), null).setPositiveButton(L.t("前往 GitHub"), (d, w) -> openUrl(PROJECT_URL)).create();
+        star.setOnDismissListener(d -> { promptShowing = false; maybePrompts(); }); star.show();
     }
     private void copyGroup() { getSystemService(ClipboardManager.class).setPrimaryClip(ClipData.newPlainText("TongjiTap QQ", QQ_GROUP)); toast(L.t("已复制 QQ 群号 ") + QQ_GROUP); }
     private void openUrl(String url) { try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); } catch (android.content.ActivityNotFoundException e) { toast(L.t("未找到可打开链接的应用")); } }
@@ -459,7 +486,10 @@ public final class MainActivity extends Activity {
             }).show();
     }
     private View noticeView(boolean checkbox) {
-        LinearLayout content = form(); TextView text = Ui.text(this, Notices.FULL, Ui.INK);
+        LinearLayout content = form();
+        TextView reading = Ui.heading(this, L.t("请下滑并完整阅读隐私政策，读到末尾后才能同意并进入使用。"));
+        reading.setTextColor(Ui.BLUE); content.addView(reading); Ui.gap(content, 16);
+        TextView text = Ui.text(this, Notices.FULL, Ui.INK);
         text.setTextIsSelectable(true); content.addView(text);
         if (checkbox) {
             CheckBox check = new CheckBox(this); check.setId(android.R.id.checkbox);
@@ -478,8 +508,16 @@ public final class MainActivity extends Activity {
         dialog.setOnShowListener(d -> {
             Button agree = dialog.getButton(AlertDialog.BUTTON_POSITIVE); agree.setEnabled(false);
             CheckBox check = content.findViewById(android.R.id.checkbox);
-            check.setOnCheckedChangeListener((button, checked) -> agree.setEnabled(checked));
+            ScrollView scroll = (ScrollView) content; boolean[] readToEnd = {false}; check.setEnabled(false);
+            Runnable update = () -> {
+                if (scroll.getHeight() > 0 && scroll.getChildAt(0).getHeight() > 0 && !scroll.canScrollVertically(1)) readToEnd[0] = true;
+                check.setEnabled(readToEnd[0]); agree.setEnabled(readToEnd[0] && check.isChecked());
+            };
+            scroll.setOnScrollChangeListener((view, x, y, oldX, oldY) -> update.run());
+            scroll.addOnLayoutChangeListener((view, l, t, r, b, ol, ot, or, ob) -> scroll.post(update));
+            check.setOnCheckedChangeListener((button, checked) -> update.run()); scroll.post(update);
             agree.setOnClickListener(v -> {
+                if (!readToEnd[0] || !check.isChecked()) return;
                 try { store.accept(); dialog.dismiss(); render(); }
                 catch (IllegalStateException e) { toast(e.getMessage()); }
             });

@@ -13,7 +13,7 @@ ADB = ROOT / 'tools/android-sdk/platform-tools/adb.exe'
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--serial', required=True)
-    parser.add_argument('--suite', choices=('regression', 'formal', 'integration'), default='regression')
+    parser.add_argument('--suite', choices=('regression', 'formal', 'integration', 'onboarding'), default='regression')
     args = parser.parse_args()
     if not re.fullmatch(r'emulator-\d+', args.serial):
         raise SystemExit('Refusing to run on a physical device.')
@@ -36,7 +36,7 @@ def main():
     avd_property = adb('shell', 'getprop', 'ro.boot.qemu.avd_name').strip()
     if avd_property and avd_property != avd:
         raise SystemExit('AVD identity mismatch.')
-    folder = ROOT / 'dist/checks' / avd / '1.0.0' / args.suite
+    folder = ROOT / 'dist/checks' / avd / '1.0.1' / args.suite
     folder.mkdir(parents=True, exist_ok=True)
     for package in ('org.hachile.tongjitap.test', 'org.hachile.tongjitap', 'org.hachile.tongjitap.fixture'):
         adb('uninstall', package, check=False)
@@ -48,6 +48,8 @@ def main():
     adb('shell', 'cmd', 'statusbar', 'collapse', check=False)
     if args.suite == 'integration':
         selector = ['-e', 'only', 'integration']
+    if args.suite == 'onboarding':
+        selector = ['-e', 'only', 'onboarding']
     runner = 'DeviceChecks'
     output = adb('shell', 'am', 'instrument', '-w', '-r', *selector, 'org.hachile.tongjitap.test/org.hachile.tongjitap.' + runner, timeout=420)
     (folder / 'device-result.txt').write_text(output, encoding='utf-8')
@@ -62,6 +64,8 @@ def main():
     if args.suite == 'integration':
         expected = 3 if avd == 'TongjiTap26' else 6
         label = 'integration scenarios'
+    if args.suite == 'onboarding':
+        expected, label = 10, 'onboarding scenarios'
     if f'PASS: {expected} {label}' not in output or 'FAIL:' in output:
         raise SystemExit('Device checks failed. See ' + str(folder))
     (folder / 'failure.png').unlink(missing_ok=True)

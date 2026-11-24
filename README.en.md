@@ -12,9 +12,9 @@ Tapping and music work on Android 8 or later. Color detection and Relay need And
 
 ## Usage
 
-On first launch, read the privacy notice and follow the tutorial. You can open the tutorial again from More.
+On first launch, scroll to the end of the privacy policy before agreeing. Choose a feature and follow the highlighted controls to practice tap selection, music speed or Wi-Fi calibration. Tutorials use examples without changing your real settings. Find the other guides under More > Getting started.
 
-<table><tr><th>Loop</th><th>Stride</th><th>Relay</th><th>More</th></tr><tr><td><img src="./docs/images/loop-1.0.0.png" width="220" alt="Loop settings"></td><td><img src="./docs/images/stride-1.0.0.png" width="220" alt="Stride music player"></td><td><img src="./docs/images/relay-1.0.0.png" width="220" alt="Relay calibration"></td><td><img src="./docs/images/more-1.0.0.png" width="220" alt="More settings"></td></tr></table>
+<table><tr><th>Loop</th><th>Stride</th><th>Relay</th><th>More</th></tr><tr><td><img src="./docs/images/loop-1.0.1.png" width="220" alt="Loop settings"></td><td><img src="./docs/images/stride-1.0.1.png" width="220" alt="Stride music player"></td><td><img src="./docs/images/relay-1.0.1.png" width="220" alt="Relay calibration"></td><td><img src="./docs/images/more-1.0.1.png" width="220" alt="More settings"></td></tr></table>
 
 ### Loop
 
@@ -48,6 +48,8 @@ Failed switches, repeated recognition failures, screen locking or screen size ch
 
 View the version and changelog, replay the tutorial or switch between Chinese, English, Japanese and German.
 
+Download latest version opens the APK in your browser. Automatic update reminders are off by default. Enable them to check GitHub when the app opens and get a prompt when a newer version is available.
+
 ## Privacy and use
 
 The app has no ads. Settings and the music library stay in app storage on your phone. Screenshots are processed in device memory without saved copies or uploads. Automated actions require your permission and a manual start.
@@ -74,7 +76,7 @@ python scripts/bootstrap.py
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1
 ```
 
-The APK is written to `dist/tongjitap-1.0.0.apk`. App source is in `app/`, device test pages are in `fixture/`, and build scripts are in `scripts/`. See [VALIDATION.md](./VALIDATION.md) for checks. Test APKs are not included in the release app.
+The APK is written to `dist/tongjitap-1.0.1.apk`. App source is in `app/`, device test pages are in `fixture/`, and build scripts are in `scripts/`. See [VALIDATION.md](./VALIDATION.md) for checks. Test APKs are not included in the release app.
 
 Do not commit `.signing`, local settings, SDKs or caches. Your own build uses a different signing key from the official APK. Keep the same key for future updates.
 

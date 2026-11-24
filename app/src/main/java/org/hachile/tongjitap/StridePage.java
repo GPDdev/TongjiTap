@@ -93,7 +93,7 @@ final class StridePage extends android.view.ContextThemeWrapper {
         TextView brand = MusicUi.text(this, L.t("随步"), 24, MusicUi.TEXT); brand.setTypeface(Typeface.DEFAULT_BOLD);
         header.addView(brand, new LinearLayout.LayoutParams(0, -1, 1));
         TextView wordmark = MusicUi.text(this, "Stride", 10, MusicUi.MUTED); wordmark.setLetterSpacing(.14f);
-        header.addView(wordmark, MusicUi.size(this, 80, -1));
+        if (!L.language.equals("zh")) header.addView(wordmark, MusicUi.size(this, 80, -1));
         header.addView(new MusicUi.Icon(this, "settings", L.t("调速设置"), false, this::settings), MusicUi.size(this, 48, 48));
         root.addView(header, MusicUi.size(this, -1, 64));
         LinearLayout topline = MusicUi.row(this);

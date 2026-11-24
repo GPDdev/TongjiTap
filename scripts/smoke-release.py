@@ -9,12 +9,13 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 ADB = ROOT / 'tools/android-sdk/platform-tools/adb.exe'
+VERSION = '1.0.1'
 
 
 def smoke(pair):
     api, port = pair
     serial = f'emulator-{port}'
-    folder = ROOT / f'dist/checks/Release{api}/1.0.0'
+    folder = ROOT / f'dist/checks/Release{api}/{VERSION}'
     folder.mkdir(parents=True, exist_ok=True)
 
     def adb(*args, binary=False):
@@ -27,7 +28,7 @@ def smoke(pair):
         raise RuntimeError('Project AVD definition missing')
     subprocess.run([str(ADB), '-s', serial, 'uninstall', 'org.hachile.tongjitap'], capture_output=True)
     upgrade = api == 36
-    first_apk = 'tongjitap-0.2.1.apk' if upgrade else 'tongjitap-1.0.0.apk'
+    first_apk = 'tongjitap-1.0.0.apk' if upgrade else f'tongjitap-{VERSION}.apk'
     assert 'Success' in adb('install', str(ROOT / 'dist' / first_apk))
     adb('shell', 'cmd', 'statusbar', 'collapse')
     adb('shell', 'am', 'start', '-W', '-n', 'org.hachile.tongjitap/.MainActivity')
@@ -59,7 +60,7 @@ def smoke(pair):
         (folder / '01-consent.png').write_bytes(adb('exec-out', 'screencap', '-p', binary=True))
         for _ in range(18):
             checkbox = find(ui, '我已阅读并理解功能、权限和风险说明')
-            if checkbox is not None:
+            if checkbox is not None and checkbox.get('enabled') == 'true':
                 break
             adb('shell', 'input', 'swipe', '540', '1500', '540', '400', '250')
             ui = tree()
@@ -77,6 +78,9 @@ def smoke(pair):
 
     consent()
     if upgrade:
+        for _ in range(5):
+            tap(find(tree(), '下一步'))
+        tap(find(tree(), '开始使用'))
         tap(find(tree(), '设置循环次数'))
         editor = next(n for n in tree().iter('node') if n.get('class') == 'android.widget.EditText')
         tap(editor)
@@ -85,18 +89,16 @@ def smoke(pair):
         tap(find(tree(), '保存'))
         assert find(tree(), '整组循环 13 次') is not None
         before = app_uid()
-        assert 'Success' in adb('install', '-r', str(ROOT / 'dist/tongjitap-1.0.0.apk'))
+        assert 'Success' in adb('install', '-r', str(ROOT / f'dist/tongjitap-{VERSION}.apk'))
         after = app_uid()
         assert before == after
         adb('shell', 'am', 'start', '-W', '-n', 'org.hachile.tongjitap/.MainActivity')
-        consent()
-    for _ in range(5):
-        tap(find(tree(), '下一步'))
-    assert find(tree(), 'QQ 交流群：934139029') is not None
-    tap(find(tree(), '开始使用'))
+    else:
+        assert find(tree(), '你想先学哪个功能？') is not None
+        tap(find(tree(), '稍后再学'))
     assert find(tree(), '整组循环 13 次' if upgrade else '整组循环 10 次') is not None
     (folder / '02-home.png').write_bytes(adb('exec-out', 'screencap', '-p', binary=True))
-    for tab, expected in [('随步', '播放倍速'), ('跃点', '开始之前'), ('更多', '当前版本 1.0.0')]:
+    for tab, expected in [('随步', '播放倍速'), ('跃点', '开始之前'), ('更多', f'当前版本 {VERSION}')]:
         tap(find(tree(), tab))
         ui = tree()
         if tab != '随步':
@@ -104,6 +106,10 @@ def smoke(pair):
         else:
             assert any(n.get('content-desc') == '调速设置' for n in ui.iter('node'))
         (folder / (tab + '.png')).write_bytes(adb('exec-out', 'screencap', '-p', binary=True))
+    ui = tree()
+    assert find(ui, '下载最新版') is not None
+    reminder = find(ui, '自动更新提醒')
+    assert reminder is not None and reminder.get('checked') == 'false'
     (folder / 'release-result.txt').write_text(
         f'PASS: signed release, explicit consent, tutorial and four tabs on API {api}; upgrade={upgrade}\n', encoding='utf-8')
     print(f'Release API {api}: consent, tutorial, four tabs; upgrade={upgrade} PASS', flush=True)
@@ -116,7 +122,7 @@ if __name__ == '__main__':
     with ThreadPoolExecutor(max_workers=2) as pool:
         list(pool.map(smoke, [(api,5556 if api==26 else 5558) for api in apis]))
     p = subprocess.run([str(ROOT / 'tools/android-sdk/build-tools/35.0.0/aapt.exe'), 'dump', 'permissions',
-                        str(ROOT / 'dist/tongjitap-1.0.0.apk')], capture_output=True, check=True, text=True)
+                        str(ROOT / f'dist/tongjitap-{VERSION}.apk')], capture_output=True, check=True, text=True)
     required = {'android.permission.INTERNET', 'android.permission.ACCESS_WIFI_STATE',
                 'android.permission.ACCESS_NETWORK_STATE', 'android.permission.WAKE_LOCK',
                 'android.permission.VIBRATE', 'android.permission.FOREGROUND_SERVICE',

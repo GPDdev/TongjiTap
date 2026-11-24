@@ -34,7 +34,7 @@ public final class PlaybackService extends MediaSessionService {
         super.onCreate();
         store = new LibraryStore(this);
         DefaultHttpDataSource.Factory http = new DefaultHttpDataSource.Factory()
-                .setUserAgent("TongjiTap/1.0.0")
+                .setUserAgent("TongjiTap/" + BuildConfig.VERSION_NAME)
                 .setDefaultRequestProperties(Collections.singletonMap("Referer", "https://music.163.com/"))
                 .setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(12000).setReadTimeoutMs(15000);
         player = new ExoPlayer.Builder(this)

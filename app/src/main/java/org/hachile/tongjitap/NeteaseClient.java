@@ -57,7 +57,7 @@ final class NeteaseClient {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setConnectTimeout(12000);
         c.setReadTimeout(15000);
-        c.setRequestProperty("User-Agent", "Mozilla/5.0 TongjiTap/1.0.0");
+        c.setRequestProperty("User-Agent", "Mozilla/5.0 TongjiTap/" + BuildConfig.VERSION_NAME);
         c.setRequestProperty("Referer", "https://music.163.com/");
         c.setInstanceFollowRedirects(false);
         return c;

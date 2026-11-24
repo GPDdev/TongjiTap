@@ -12,9 +12,9 @@
 
 ## 使い方
 
-初回起動時にプライバシーポリシーとチュートリアルが表示されます。チュートリアルは「その他」からいつでも見直せます。
+初回はプライバシーポリシーを最後までスクロールしてから同意してください。機能を選び、明るく表示された操作に従って、位置の選択、音楽の速度調整、Wi-Fi の位置設定を実際に練習できます。ガイドは例を使い、実際の設定は変更しません。他のガイドは「その他」の「使い方ガイド」でいつでも確認できます。
 
-<table><tr><th>Loop</th><th>Stride</th><th>Relay</th><th>その他</th></tr><tr><td><img src="./docs/images/loop-1.0.0.png" width="220" alt="Loop のタップ設定"></td><td><img src="./docs/images/stride-1.0.0.png" width="220" alt="Stride の音楽プレーヤー"></td><td><img src="./docs/images/relay-1.0.0.png" width="220" alt="Relay の画面調整"></td><td><img src="./docs/images/more-1.0.0.png" width="220" alt="その他の設定"></td></tr></table>
+<table><tr><th>Loop</th><th>Stride</th><th>Relay</th><th>その他</th></tr><tr><td><img src="./docs/images/loop-1.0.1.png" width="220" alt="Loop のタップ設定"></td><td><img src="./docs/images/stride-1.0.1.png" width="220" alt="Stride の音楽プレーヤー"></td><td><img src="./docs/images/relay-1.0.1.png" width="220" alt="Relay の画面調整"></td><td><img src="./docs/images/more-1.0.1.png" width="220" alt="その他の設定"></td></tr></table>
 
 ### Loop
 
@@ -46,7 +46,9 @@
 
 ### その他（More）
 
-バージョンや更新履歴の確認、チュートリアルの再表示、表示言語の切り替えができます。中国語、英語、日本語、ドイツ語に対応しています。
+バージョンや更新履歴の確認、ガイドの再表示、表示言語の切り替えができます。中国語、英語、日本語、ドイツ語に対応しています。
+
+「最新版をダウンロード」を押すとブラウザで APK を取得します。「更新の自動通知」は初期状態ではオフです。オンにすると起動時に GitHub を確認し、新版があるときにダウンロードを案内します。
 
 ## プライバシーと利用上の注意
 
@@ -74,7 +76,7 @@ python scripts/bootstrap.py
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1
 ```
 
-APK は `dist/tongjitap-1.0.0.apk` に出力されます。アプリのソースは `app/`、端末テスト用の画面は `fixture/`、ビルドスクリプトは `scripts/` にあります。確認方法は [VALIDATION.md](./VALIDATION.md)をご覧ください。テスト用 APK は正式版のインストールパッケージには含まれません。
+APK は `dist/tongjitap-1.0.1.apk` に出力されます。アプリのソースは `app/`、端末テスト用の画面は `fixture/`、ビルドスクリプトは `scripts/` にあります。確認方法は [VALIDATION.md](./VALIDATION.md)をご覧ください。テスト用 APK は正式版のインストールパッケージには含まれません。
 
 `.signing`、ローカル設定、SDK、キャッシュはコミットしないでください。自分でビルドした APK の署名は公式 APK と異なります。以降の更新では、同じ署名を使い続ける必要があります。
 

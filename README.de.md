@@ -12,9 +12,9 @@ Die Tipp- und Musikfunktionen laufen ab Android 8. Farberkennung und Relay benö
 
 ## Bedienung
 
-Beim ersten Start erscheinen die Datenschutzerklärung und eine Einführung. Die Einführung kannst du jederzeit unter "Mehr" erneut öffnen.
+Scrolle beim ersten Start bis zum Ende der Datenschutzerklärung, bevor du zustimmst. Wähle eine Funktion und übe mit den hervorgehobenen Bedienelementen die Positionsauswahl, das Musiktempo oder die WLAN-Kalibrierung. Die Beispiele ändern deine echten Einstellungen nicht. Weitere Anleitungen findest du unter Mehr > Einführung.
 
-<table><tr><th>Loop</th><th>Stride</th><th>Relay</th><th>Mehr</th></tr><tr><td><img src="./docs/images/loop-1.0.0.png" width="220" alt="Loop-Einstellungen für Tippfolgen"></td><td><img src="./docs/images/stride-1.0.0.png" width="220" alt="Stride-Musikplayer"></td><td><img src="./docs/images/relay-1.0.0.png" width="220" alt="Bildschirmkalibrierung für Relay"></td><td><img src="./docs/images/more-1.0.0.png" width="220" alt="Weitere Einstellungen"></td></tr></table>
+<table><tr><th>Loop</th><th>Stride</th><th>Relay</th><th>Mehr</th></tr><tr><td><img src="./docs/images/loop-1.0.1.png" width="220" alt="Loop-Einstellungen für Tippfolgen"></td><td><img src="./docs/images/stride-1.0.1.png" width="220" alt="Stride-Musikplayer"></td><td><img src="./docs/images/relay-1.0.1.png" width="220" alt="Bildschirmkalibrierung für Relay"></td><td><img src="./docs/images/more-1.0.1.png" width="220" alt="Weitere Einstellungen"></td></tr></table>
 
 ### Loop
 
@@ -48,6 +48,8 @@ Relay stoppt bei fehlgeschlagenem Umschalten, wiederholten Erkennungsfehlern, ei
 
 Hier findest du die Version und den Änderungsverlauf, kannst die Einführung erneut öffnen oder die Sprache wechseln. Zur Auswahl stehen Chinesisch, Englisch, Japanisch und Deutsch.
 
+Neueste Version herunterladen öffnet die APK im Browser. Automatische Updatehinweise sind zunächst ausgeschaltet. Nach dem Einschalten prüft die App GitHub beim Start und meldet verfügbare neue Versionen.
+
 ## Datenschutz und Hinweise zur Nutzung
 
 Die App enthält keine Werbung. Einstellungen und Musikbibliothek liegen in den App-Daten auf deinem Smartphone. Screenshots werden nur im Arbeitsspeicher des Geräts verarbeitet, ohne Kopien zu speichern oder Bilder hochzuladen. Automatische Aktionen erfordern deine Erlaubnis und einen manuellen Start.
@@ -74,7 +76,7 @@ python scripts/bootstrap.py
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1
 ```
 
-Die APK wird als `dist/tongjitap-1.0.0.apk` ausgegeben. Der App-Quellcode liegt in `app/`, die Testseiten für Gerätetests in `fixture/` und die Build-Skripte in `scripts/`. Hinweise zur Prüfung stehen in [VALIDATION.md](./VALIDATION.md). Test-APKs sind nicht Teil des offiziellen Installationspakets.
+Die APK wird als `dist/tongjitap-1.0.1.apk` ausgegeben. Der App-Quellcode liegt in `app/`, die Testseiten für Gerätetests in `fixture/` und die Build-Skripte in `scripts/`. Hinweise zur Prüfung stehen in [VALIDATION.md](./VALIDATION.md). Test-APKs sind nicht Teil des offiziellen Installationspakets.
 
 Committe weder `.signing` noch lokale Einstellungen, SDKs oder Caches. Selbst gebaute APKs haben eine andere Signatur als das offizielle Paket. Verwende für spätere Updates weiterhin denselben Signaturschlüssel.
 

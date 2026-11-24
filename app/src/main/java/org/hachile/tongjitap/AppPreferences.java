@@ -17,6 +17,8 @@ final class AppPreferences {
     void launch() { prefs.edit().putInt("launches", prefs.getInt("launches", 0) + 1).apply(); }
     boolean starDue() { return prefs.getInt("launches", 0) >= 5 && !prefs.getBoolean("starShown", false); }
     void starShown() { prefs.edit().putBoolean("starShown", true).apply(); }
+    boolean updateReminder() { return prefs.getBoolean("updateReminder", false); }
+    void updateReminder(boolean enabled) { prefs.edit().putBoolean("updateReminder", enabled).apply(); }
     static Context wrap(Context base) {
         AppPreferences p = new AppPreferences(base);
         Configuration c = new Configuration(base.getResources().getConfiguration());

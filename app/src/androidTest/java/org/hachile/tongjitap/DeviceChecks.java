@@ -21,10 +21,11 @@ public final class DeviceChecks extends IntegrationChecks {
     private MainActivity activity;
     private int passed;
     private String stage = "setup";
-    private boolean newUiOnly, formalUi, integration;
+    private boolean newUiOnly, formalUi, integration, onboarding;
 
-    @Override public void onCreate(Bundle args) { super.onCreate(args); newUiOnly = args != null && "new-ui".equals(args.getString("only")); formalUi = args != null && "v1".equals(args.getString("only")); integration = args != null && "integration".equals(args.getString("only")); start(); }
+    @Override public void onCreate(Bundle args) { super.onCreate(args); newUiOnly = args != null && "new-ui".equals(args.getString("only")); formalUi = args != null && "v1".equals(args.getString("only")); integration = args != null && "integration".equals(args.getString("only")); onboarding = args != null && "onboarding".equals(args.getString("only")); start(); }
     @Override public void onStart() {
+        if (onboarding) { new OnboardingChecks(this).run(); return; }
         if (integration) { super.onStart(); return; }
         Bundle result = new Bundle();
         try {
@@ -53,9 +54,7 @@ public final class DeviceChecks extends IntegrationChecks {
 
             stage = "Explicit consent"; launchMain();
             AccessibilityNodeInfo agree = node("同意并进入"); require(agree != null && !agree.isEnabled(), "Consent must start disabled");
-            for (int i = 0; i < 18 && node("我已阅读并理解功能、权限和风险说明") == null; i++) {
-                Rect screen = bounds(); swipe(screen.centerX(), screen.bottom - 380, screen.centerX(), screen.top + 350);
-            }
+            scrollConsentToEnd();
             click("我已阅读并理解功能、权限和风险说明"); click("同意并进入");
             await(store::accepted, 3000); screenshot("01-home"); pass();
 
@@ -255,21 +254,10 @@ public final class DeviceChecks extends IntegrationChecks {
         stage = "First launch consent and complete tutorial"; launchMain();
         require(!requiredNode("同意并进入").node.isEnabled(), "Consent starts disabled");
         scrollTo("我已阅读并理解功能、权限和风险说明");
-        for (int i = 0; i < 12 && node("我已阅读并理解功能、权限和风险说明") == null; i++) swipe(540, 1450, 540, 450);
+        scrollConsentToEnd();
         click("我已阅读并理解功能、权限和风险说明"); click("同意并进入");
-        require(node("欢迎使用循济") != null, "Consent leads into tutorial"); screenshot("v1-01-tutorial");
-        for (int i = 0; i < 5; i++) {
-            waitForIdleSync(); SystemClock.sleep(400);
-            final Rect next = new Rect();
-            runOnMainSync(() -> {
-                View button = findTextView(activity.getWindow().getDecorView(), "下一步");
-                require(button != null, "Tutorial next is visible"); button.getGlobalVisibleRect(next);
-            });
-            tap(next.centerX(), next.centerY());
-        }
-        automation.setServiceInfo(automation.getServiceInfo());
-        requiredNode("QQ 交流群：934139029");
-        click("开始使用"); require(new AppPreferences(target).tutorialDone(), "Tutorial completed persistently"); pass();
+        require(node("你想先学哪个功能？") != null, "Consent leads into tutorial chooser"); screenshot("v1-01-tutorial");
+        click("稍后再学"); require(new AppPreferences(target).tutorialDone(), "Tutorial can be reopened from More"); pass();
         target.getSharedPreferences("app", 0).edit().putBoolean("starShown", true).commit();
 
         stage = "Four tabs, music and collapsed changelog";
@@ -548,6 +536,14 @@ public final class DeviceChecks extends IntegrationChecks {
     private void click(String text) {
         Found f = requiredNode(text); require(f.node.isEnabled(), "Disabled control: " + text);
         require(f.node.performAction(AccessibilityNodeInfo.ACTION_CLICK), "Click action failed: " + text); SystemClock.sleep(200);
+    }
+    private void scrollConsentToEnd() {
+        for (int i = 0; i < 18; i++) {
+            AccessibilityNodeInfo checkbox = node("我已阅读并理解功能、权限和风险说明");
+            if (checkbox != null && checkbox.isEnabled()) return;
+            Rect screen = bounds(); swipe(screen.centerX(), screen.bottom - 380, screen.centerX(), screen.top + 350);
+        }
+        throw new AssertionError("Privacy checkbox must unlock at the bottom");
     }
     private void setText(String label, String text) {
         Bundle args = new Bundle(); args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text);
