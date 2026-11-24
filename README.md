@@ -3,7 +3,7 @@
 <p align="center">同济大学体育刷锻辅助器，支持自动点击、音乐调速和 Wi-Fi 切换。</p>
 <p align="center"><s>这个作者朋友面善又友善，因此允许刷锻一次走两圈</s></p>
 
-<p align="center">🇨🇳 <a href="./README.md">简体中文</a> | 🇺🇸 <a href="./README.en.md">English</a></p>
+<p align="center"><a href="./README.md">简体中文</a> | <a href="./README.en.md">English</a></p>
 
 <p align="center"><a href="https://github.com/GPDdev/TongjiTap/releases/latest/download/tongjitap.apk"><img src="./docs/images/download.svg" width="224" height="60" alt="下载安卓版"></a></p>
 <p align="center"><a href="https://github.com/GPDdev/TongjiTap/releases/latest/download/tongjitap.apk"><img src="./docs/images/download-qr.png" width="225" height="225" alt="扫码下载最新版循济 Android APK"></a></p>
