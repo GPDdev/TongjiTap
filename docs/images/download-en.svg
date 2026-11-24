@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="224" height="60" viewBox="0 0 224 60" role="img" aria-labelledby="title desc">
+  <title id="title">Download APK</title>
+  <desc id="desc">Download the latest TongjiTap Android APK</desc>
+  <rect x="0.5" y="0.5" width="223" height="59" rx="13.5" fill="#2563eb" stroke="#1d4ed8"/>
+  <g fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M32 19v17m-6-6 6 6 6-6"/>
+    <path d="M22 36v6h20v-6"/>
+  </g>
+  <text x="58" y="37" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="600">Download APK</text>
+</svg>
