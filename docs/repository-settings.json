@@ -23,7 +23,9 @@
   "release_title": "循济 TongjiTap v1.0.0",
   "readme_languages": [
     "zh",
-    "en"
+    "en",
+    "ja",
+    "de"
   ],
   "readme_default": "zh"
 }

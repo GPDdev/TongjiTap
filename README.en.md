@@ -1,16 +1,16 @@
 <p align="center"><img src="./docs/images/tongjitap-icon.svg" width="100" alt="TongjiTap icon"></p>
 <h1 align="center">TongjiTap 循济</h1>
-<p align="center">An Android app for automated taps, music speed control and Wi-Fi switching.</p>
+<p align="center">A helper for Tongji University's exercise logging, with automated taps, music speed control and Wi-Fi switching.</p>
 
-<p align="center">🇨🇳 <a href="./README.md">简体中文</a> | 🇺🇸 <a href="./README.en.md">English</a></p>
+<p align="center"><a href="./README.md">简体中文</a> | <a href="./README.en.md">English</a> | <a href="./README.ja.md">日本語</a> | <a href="./README.de.md">Deutsch</a></p>
 
 <p align="center"><a href="https://github.com/GPDdev/TongjiTap/releases/latest/download/tongjitap.apk"><img src="./docs/images/download-en.svg" width="224" height="60" alt="Download Android APK"></a></p>
 <p align="center"><a href="https://github.com/GPDdev/TongjiTap/releases/latest/download/tongjitap.apk"><img src="./docs/images/download-qr.png" width="225" height="225" alt="Scan to download the latest TongjiTap Android APK"></a></p>
 <p align="center">Scan with your Android phone to download the latest version</p>
 
-Click the button or scan the QR code to download `tongjitap.apk`. Tapping and music work on Android 8 or later. Color detection and Relay need Android 11 or later. There is no iOS package.
+Tapping and music work on Android 8 or later. Color detection and Relay need Android 11 or later. There is no iOS version yet QAQ
 
-## How to use it
+## Usage
 
 On first launch, read the privacy notice and follow the tutorial. You can open the tutorial again from More.
 
@@ -18,13 +18,13 @@ On first launch, read the privacy notice and follow the tutorial. You can open t
 
 ### Loop
 
-1. Take a full screenshot of the target page, import it and select where to tap.
+1. Take a full screenshot of the exercise tracking page, import it and select where to tap, such as the pause or resume button.
 2. Set how long to press, how long to wait, the step order and the number of repeats.
 3. Enable accessibility when prompted, open the floating panel and return to the target page. Press Start. You can stop or close the panel at any time.
 
-Points are selected from screenshots by default. Choose floating point selection to show the picking controls. Use an uncropped screenshot from your phone. Select the points again if the screen rotates, its resolution changes or the page layout moves.
+Points are selected from screenshots by default. Choose "Pick with overlay" to show the picking controls. Please use the original, uncropped screenshot from your phone!
 
-Color triggers can press Back or tap a position when a chosen screen color appears. Select the position, color and action from a screenshot; detection then checks the live screen. By default it checks every 500 ms and acts after two consecutive matches. It waits for the color to disappear before continuing, and stops if recovery or screen capture fails.
+"Color trigger" can press Back or tap a position when a chosen screen color appears. This helps handle unexpected visits to the exercise settings page. Select the position, color and action from a screenshot; at runtime, it checks the current screen capture. By default it checks every 500 ms and performs the configured action once after two consecutive matches. It stops if the page does not recover or screen capture fails.
 
 Some phones require you to allow "restricted settings" in the app information screen before enabling accessibility.
 
@@ -32,12 +32,12 @@ Some phones require you to allow "restricted settings" in the app information sc
 
 The music player comes from [StrideTune](https://github.com/GPDdev/StrideTune). Import local audio or paste a public NetEase playlist link to play music. Slide across the speed control to change playback speed. You can adjust the speed range, gestures and pitch preservation. Background playback, headset controls, repeat and shuffle are supported.
 
-Online tracks may be unavailable because of copyright, region or platform restrictions. You can use your own local audio instead. Streaming uses network data. The app has no account login, membership bypass or NCM decryption.
+Online tracks may be unavailable because of copyright, region or platform restrictions. You can use your own local audio instead. Streaming may use network data.
 
 ### Relay
 
 1. Enable Wi-Fi and mobile data. Save TJ-WIFI and turn on automatic connection. The app does not read your campus password.
-2. Import a full screenshot taken during a run and select the map and current distance regions. Keep time, target distance and other numbers outside the distance region.
+2. Import a full screenshot taken during a run and select the map and current distance regions. The distance region should contain only the current distance; leave out time and other distance values.
 3. Import another screenshot with quick settings expanded and select the Wi-Fi tile, called "Internet" on some phones. Open Relay's panel, move it outside the detection regions, start and keep the run page visible.
 
 Relay switches Wi-Fi only when a large marker movement and a distance increase of more than 0.02 km occur together and are confirmed by the next observation. It alternates off and on. You can adjust how far the marker must move to trigger a switch.
@@ -50,7 +50,7 @@ View the version and changelog, replay the tutorial or switch between Chinese, E
 
 ## Privacy and use
 
-Settings and the music library stay in private app storage. Screenshots are processed in device memory without saved copies or uploads. Automated actions require your permission and a manual start. The app has no ads.
+The app has no ads. Settings and the music library stay in app storage on your phone. Screenshots are processed in device memory without saved copies or uploads. Automated actions require your permission and a manual start.
 
 Online music connects to the music provider. Distance recognition runs on the device, but ML Kit sends performance and usage metrics to Google. See its [privacy terms](https://developers.google.com/ml-kit/terms). The full privacy notice is available in More.
 
