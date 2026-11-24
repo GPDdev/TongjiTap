@@ -7,6 +7,8 @@
 <p align="center">🇨🇳 <a href="./README.md">简体中文</a> | 🇺🇸 <a href="./README.en.md">English</a></p>
 
 <p align="center"><a href="https://github.com/GPDdev/TongjiTap/releases/latest/download/tongjitap.apk"><img src="./docs/images/download.svg" width="260" alt="Download the latest Android APK directly"></a></p>
+<p align="center"><a href="https://github.com/GPDdev/TongjiTap/releases/latest/download/tongjitap.apk"><img src="./docs/images/download-qr.png" width="225" height="225" alt="Scan to download the latest TongjiTap Android APK"></a></p>
+<p align="center">Scan with your phone to download the latest Android APK</p>
 <p align="center"><a href="https://github.com/GPDdev/TongjiTap/releases">All versions and release notes</a></p>
 
 [Install](#install) | [Four tabs](#four-tabs) | [Getting started](#getting-started) | [Privacy and use](#privacy-and-use) | [Feedback and development](#feedback-and-development)
