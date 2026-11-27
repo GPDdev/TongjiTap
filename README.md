@@ -10,6 +10,8 @@
 
 点击和音乐功能支持 Android 8 及以上版本，颜色检测与跃点需要 Android 11 及以上版本。目前暂无 iOS 版本 QAQ
 
+**原生蓝独立版 1.1.0（Android）** 可以和上方的常规版同时安装。在「随步」调音乐倍速，在「更多」检查独立版更新。漫迹是为 iOS 预留的页面。[下载独立版 APK](https://github.com/GPDdev/TongjiTap/releases/download/ui-v1.1.0/tongjitap-preview.apk) ｜ [版本说明和源码](https://github.com/GPDdev/TongjiTap/releases/tag/ui-v1.1.0)
+
 ## 使用说明
 
 第一次打开，请下滑读完隐私政策再勾选同意。接着选择想学的功能，跟着高亮提示亲手练习选点、音乐调速或 Wi-Fi 校准。教程使用示例内容，不会改动你的实际配置；其他教程可以随时在“更多”的“新手教程”里查看。

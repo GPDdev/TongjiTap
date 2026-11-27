@@ -10,6 +10,8 @@
 
 タップと音楽の機能は Android 8 以降に対応しています。色の検出と Relay には Android 11 以降が必要です。iOS 版はまだありません QAQ
 
+**Android 向けの独立版 Native Blue 1.1.0** は、上の通常版と同じ端末にインストールできます。Stride で音楽の再生速度を調整し、「その他」で独立版のアップデートを確認できます。Roam は今後の iOS 版に向けて用意した画面です。[独立版の APK をダウンロード](https://github.com/GPDdev/TongjiTap/releases/download/ui-v1.1.0/tongjitap-preview.apk) ｜ [リリースノートとソースコード](https://github.com/GPDdev/TongjiTap/releases/tag/ui-v1.1.0)
+
 ## 使い方
 
 初回はプライバシーポリシーを最後までスクロールしてから同意してください。機能を選び、明るく表示された操作に従って、位置の選択、音楽の速度調整、Wi-Fi の位置設定を実際に練習できます。ガイドは例を使い、実際の設定は変更しません。他のガイドは「その他」の「使い方ガイド」でいつでも確認できます。

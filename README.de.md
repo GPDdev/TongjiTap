@@ -10,6 +10,8 @@
 
 Die Tipp- und Musikfunktionen laufen ab Android 8. Farberkennung und Relay benötigen Android 11 oder neuer. Eine iOS-Version gibt es bisher nicht QAQ
 
+**Native Blue 1.1.0 für Android** lässt sich neben der regulären Ausgabe installieren. In Stride kannst du das Wiedergabetempo ändern und unter „Mehr“ nach Updates für Native Blue suchen. Roam ist ein Platzhalter für iOS. [Native-Blue-APK herunterladen](https://github.com/GPDdev/TongjiTap/releases/download/ui-v1.1.0/tongjitap-preview.apk) | [Versionshinweise und Quellcode](https://github.com/GPDdev/TongjiTap/releases/tag/ui-v1.1.0)
+
 ## Bedienung
 
 Scrolle beim ersten Start bis zum Ende der Datenschutzerklärung, bevor du zustimmst. Wähle eine Funktion und übe mit den hervorgehobenen Bedienelementen die Positionsauswahl, das Musiktempo oder die WLAN-Kalibrierung. Die Beispiele ändern deine echten Einstellungen nicht. Weitere Anleitungen findest du unter Mehr > Einführung.

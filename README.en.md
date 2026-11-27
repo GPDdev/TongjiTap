@@ -10,6 +10,8 @@
 
 Tapping and music work on Android 8 or later. Color detection and Relay need Android 11 or later. There is no iOS version yet QAQ
 
+**Native Blue 1.1.0 for Android** can be installed alongside the standard edition above. Use Stride to adjust music playback speed and More to check for Native Blue updates. Roam is a placeholder for iOS. [Download the Native Blue APK](https://github.com/GPDdev/TongjiTap/releases/download/ui-v1.1.0/tongjitap-preview.apk) | [Release notes and source](https://github.com/GPDdev/TongjiTap/releases/tag/ui-v1.1.0)
+
 ## Usage
 
 On first launch, scroll to the end of the privacy policy before agreeing. Choose a feature and follow the highlighted controls to practice tap selection, music speed or Wi-Fi calibration. Tutorials use examples without changing your real settings. Find the other guides under More > Getting started.
