@@ -1,0 +1,11 @@
+<resources>
+    <color name="app_background">#101724</color>
+    <color name="surface">#192333</color>
+    <color name="ink">#EDF2FC</color>
+    <color name="muted">#B2BED1</color>
+    <color name="divider">#334257</color>
+    <color name="accent">#96B7FF</color>
+    <color name="on_accent">#0B285D</color>
+    <color name="tonal">#203353</color>
+    <color name="wave">#385783</color>
+</resources>

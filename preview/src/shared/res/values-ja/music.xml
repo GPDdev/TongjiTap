@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playback_details">再生の詳細</string>
+    <string name="expanded">展開中</string>
+    <string name="collapsed">折りたたみ</string>
+    <plurals name="track_count">
+        <item quantity="other">%d 曲</item>
+    </plurals>
+</resources>

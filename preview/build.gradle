@@ -1,0 +1,35 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'org.hachile.tongjitap'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'org.hachile.tongjitap.preview'
+        minSdk 26
+        targetSdk 36
+        versionCode 7
+        versionName '1.1.0'
+        testInstrumentationRunner 'org.hachile.tongjitap.PreviewReleaseChecks'
+    }
+    sourceSets.main {
+        java.srcDir('src/shared/java')
+        res.srcDir('src/shared/res')
+        assets.srcDir('src/shared/assets')
+    }
+    buildFeatures { buildConfig true }
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.activity:activity:1.6.0'
+    implementation 'androidx.media3:media3-exoplayer:1.8.0'
+    implementation 'androidx.media3:media3-session:1.8.0'
+}

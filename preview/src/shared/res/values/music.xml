@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="zh">
+    <string name="playback_details">播放详情</string>
+    <string name="expanded">已展开</string>
+    <string name="collapsed">已收起</string>
+    <plurals name="track_count">
+        <item quantity="other">%d 首</item>
+    </plurals>
+</resources>
